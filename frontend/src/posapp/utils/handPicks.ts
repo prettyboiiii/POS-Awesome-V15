@@ -2,8 +2,9 @@ import { ref } from "vue";
 
 declare const frappe: any;
 
-// How many times each item was tapped (not scanned) on recent sales. The server counts them from sale
-// lines flagged mart_hand_picked; the last answer is cached so the screen works offline.
+// How many times each item was tapped (not scanned) on recent sales. The server counts them from saved
+// sale lines flagged mart_hand_picked, so a pick only counts once the bill is saved. The last answer is
+// cached so the screen works offline.
 const CACHE_KEY = "mart_hand_picks";
 
 const readCache = (): Record<string, number> => {
@@ -37,10 +38,4 @@ export async function loadHandPicks(posProfileName: string | undefined) {
 	} catch (error) {
 		console.warn("Could not load frequently used items", error);
 	}
-}
-
-// Count a tap at once so the favourites move without waiting for the next sale to be saved.
-export function bumpHandPick(itemCode: string | undefined) {
-	if (!itemCode) return;
-	handPicks.value = { ...handPicks.value, [itemCode]: (handPicks.value[itemCode] || 0) + 1 };
 }

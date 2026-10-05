@@ -382,7 +382,7 @@ import { useItemsSelectorDisplayBindings } from "../../../composables/pos/items/
 import { useCustomersStore } from "../../../stores/customersStore";
 import { useToastStore } from "../../../stores/toastStore";
 import { useUIStore } from "../../../stores/uiStore";
-import { bumpHandPick, handPicks, loadHandPicks } from "../../../utils/handPicks";
+import { handPicks, loadHandPicks } from "../../../utils/handPicks";
 import { useInvoiceStore } from "../../../stores/invoiceStore";
 import { useEmployeeStore } from "../../../stores/employeeStore";
 
@@ -1015,7 +1015,6 @@ const itemSelectorLayoutLifecycle = useItemsSelectorLayoutLifecycle({
 const add_item = async (item, optionsOrQty: any = {}) => {
 	if (props.context === "pos") {
 		let options: any = typeof optionsOrQty === "object" ? optionsOrQty : { qty: optionsOrQty };
-		if (options.handPicked) bumpHandPick(item?.item_code);
 		let requestedQty = options.qty !== undefined ? options.qty : qty.value || 0;
 		requestedQty =
 			requestedQty === "" || requestedQty == null ? 1 : Math.abs(parseFloat(requestedQty) || 1);
