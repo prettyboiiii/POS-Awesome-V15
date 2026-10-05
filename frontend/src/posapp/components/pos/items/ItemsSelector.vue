@@ -61,6 +61,9 @@
 						@search-paste="handleSearchPaste"
 						@focus="handleItemSearchFocusForPresentation"
 						@clear-qty="clearQty"
+						@set-multiplier="setScanMultiplier"
+						@clear-multiplier="qty = 1"
+						:multiplier="Number(qty) || 1"
 						@blur-qty="onQtyBlur"
 						@start-camera="startCameraScanning"
 						@open-new-item="openNewItemDialog"
@@ -1367,7 +1370,12 @@ const scanProcessor = useScanProcessor({
 	format_currency: itemDisplay.format_currency,
 	ratePrecision: itemDisplay.ratePrecision,
 	customer: selectedCustomer,
+	get_scan_qty: () => Number(qty.value) || 1,
+	set_scan_qty: (value: number) => {
+		qty.value = value;
+	},
 	onItemAdded: () => {
+		qty.value = 1;
 		scannerInput.pendingScanCode.value = "";
 		clearSearch();
 		itemsSelectorFocus.focusItemSearch();
@@ -1379,6 +1387,12 @@ const scanProcessor = useScanProcessor({
 	stock_settings,
 	search_from_scanner_ref: scannerInput.searchFromScanner,
 });
+
+const setScanMultiplier = (value: number) => {
+	qty.value = value;
+	clearSearch();
+	itemsSelectorFocus.focusItemSearch();
+};
 
 const clearSearchAndQty = () => {
 	clearSearch();

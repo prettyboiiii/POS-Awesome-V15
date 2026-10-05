@@ -13,6 +13,7 @@ import {
 	emptyScanAssignment,
 	type ScanAssignment,
 } from "./scanProcessor/scanAssignment";
+import { splitInlineMultiplier } from "../../../utils/scanMultiplier";
 import { toCompanyCurrency } from "../../../utils/erpnextCurrency";
 // @ts-ignore
 import placeholderImage from "../../../components/pos/placeholder-image.png";
@@ -60,6 +61,8 @@ export interface ScanProcessorContext {
 	) => string;
 	ratePrecision: (_val: any) => number;
 	customer: Ref<any>;
+	get_scan_qty?: () => number;
+	set_scan_qty?: (_qty: number) => void;
 	onItemAdded?: () => void;
 	onItemNotFound?: (_code: string) => void;
 	stock_settings: Ref<any>;
@@ -320,10 +323,13 @@ export function useScanProcessor(context: ScanProcessorContext) {
 			qty: newItem.qty,
 		});
 
+		const scanMultiplier = Math.max(1, Math.floor(context.get_scan_qty?.() ?? 1));
 		const requestedQtyRaw =
 			qtyFromBarcode !== null && !isNaN(qtyFromBarcode)
 				? qtyFromBarcode
-				: (newItem.qty ?? 1);
+				: scanMeta?.isScaleBarcode
+					? (newItem.qty ?? 1)
+					: scanMultiplier;
 		const requestedQty = Math.abs(requestedQtyRaw || 1);
 		const availableQty =
 			typeof newItem.available_qty === "number"
@@ -424,7 +430,10 @@ export function useScanProcessor(context: ScanProcessorContext) {
 		}
 	};
 
-	const processScannedItem = async (scannedCode: string) => {
+	const processScannedItem = async (rawScannedCode: string) => {
+		const inline = splitInlineMultiplier(rawScannedCode);
+		if (inline.qty !== null) context.set_scan_qty?.(inline.qty);
+		const scannedCode = inline.code;
 		const mark = perfMarkStart("pos:scan-process");
 		logScanFlow("Start processing scan", { scannedCode });
 		pendingScanCode.value = scannedCode;

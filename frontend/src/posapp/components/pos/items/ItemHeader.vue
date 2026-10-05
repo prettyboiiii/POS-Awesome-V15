@@ -45,6 +45,31 @@
 						ref="debounce_search"
 					>
 						<template v-slot:append-inner>
+							<v-chip
+								v-if="multiplier > 1"
+								size="small"
+								color="primary"
+								closable
+								class="scan-multiplier-chip"
+								data-testid="scan-multiplier"
+								:title="__('Quantity for the next item')"
+								@click:close.stop="$emit('clear-multiplier')"
+							>
+								×{{ multiplier }}
+							</v-chip>
+							<v-btn
+								v-if="context === 'pos'"
+								size="small"
+								color="primary"
+								variant="text"
+								class="scan-multiplier-btn"
+								data-testid="scan-multiplier-btn"
+								:aria-label="__('Type a number, then press × to add that many')"
+								:title="__('Type a number, then press × to add that many')"
+								@click.stop="applyMultiplierFromField"
+							>
+								×
+							</v-btn>
 							<v-btn
 								v-if="posProfile.posa_enable_camera_scanning"
 								icon="mdi-camera"
@@ -178,6 +203,7 @@
 </template>
 
 <script setup>
+import { multiplierFromKey } from "../../../utils/scanMultiplier";
 import { computed, ref } from "vue";
 
 const syncSearchCombobox = (root, state) => {
@@ -215,6 +241,7 @@ const vSearchCombobox = {
 
 const props = defineProps({
 	searchInput: { type: String, default: "" },
+	multiplier: { type: Number, default: 1 },
 	qtyInput: { type: [String, Number], default: 1 },
 	posProfile: { type: Object, required: true },
 	scannerLocked: { type: Boolean, default: false },
@@ -243,6 +270,8 @@ const emit = defineEmits([
 	"focus",
 	"clear-qty",
 	"blur-qty",
+	"set-multiplier",
+	"clear-multiplier",
 	"start-camera",
 	"open-new-item",
 	"toggle-settings",
@@ -276,9 +305,18 @@ const blurTarget = (event) => {
 	event?.target?.blur?.();
 };
 
+const applyMultiplierFromField = () => {
+	const value = multiplierFromKey(props.searchInput, "*");
+	if (value !== null) emit("set-multiplier", value);
+};
+
 const handleSearchEscape = (event) => {
 	if (props.searchInput) {
 		emit("esc");
+		return;
+	}
+	if (props.multiplier > 1) {
+		emit("clear-multiplier");
 		return;
 	}
 	blurTarget(event);
@@ -295,6 +333,14 @@ const handleSearchKeydown = (event) => {
 	if (event?.key === "Enter") {
 		emit("enter", event);
 		return;
+	}
+	if (props.context === "pos" && event?.key === "*") {
+		const value = multiplierFromKey(props.searchInput, "*");
+		if (value !== null) {
+			event.preventDefault();
+			emit("set-multiplier", value);
+			return;
+		}
 	}
 	emit("search-keydown", event);
 };
