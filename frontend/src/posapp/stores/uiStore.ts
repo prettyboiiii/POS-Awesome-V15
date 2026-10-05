@@ -185,6 +185,17 @@ export const useUIStore = defineStore("ui", () => {
     lastInvoiceDocument.value = document;
   }
 
+  // Shown right after a sale is submitted so the cashier sees the change to hand back. Also mirrored
+  // to the customer display.
+  type SaleComplete = { invoice: string; total: number; received: number; change: number; currency: string };
+  const saleComplete = ref<SaleComplete | null>(null);
+  function showSaleComplete(payload: SaleComplete) {
+    saleComplete.value = payload;
+  }
+  function dismissSaleComplete() {
+    saleComplete.value = null;
+  }
+
   const lastStockAdjustment = ref<any>(null);
   function setLastStockAdjustment(doc: any) {
     lastStockAdjustment.value = doc;
@@ -334,6 +345,9 @@ export const useUIStore = defineStore("ui", () => {
     setCompanyDoc,
     setRegisterData,
     setLastInvoice,
+    saleComplete,
+    showSaleComplete,
+    dismissSaleComplete,
     setOffers,
     setApplicableOffers,
     searchFocusTrigger,

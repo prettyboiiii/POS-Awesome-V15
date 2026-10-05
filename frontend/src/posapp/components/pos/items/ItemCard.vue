@@ -7,30 +7,23 @@
 		tabindex="0"
 		role="button"
 		:aria-label="`${item.item_name || item.item_code}`"
+		:style="{ '--group-color': groupColor }"
 		@click="onClick"
 		@keydown="onKeyboardSelect"
 		:draggable="true"
 		@dragstart="onDragStart"
 		@dragend="onDragEnd"
 	>
-		<div class="card-item-image-container">
-			<v-img
-				:src="item.image || placeholderImage"
-				class="card-item-image"
-				aspect-ratio="1"
-				:alt="item.item_name"
-			>
-				<template #placeholder>
-					<div class="image-placeholder">
-						<v-icon size="40" color="grey-lighten-2"> mdi-image </v-icon>
-					</div>
-				</template>
-			</v-img>
-		</div>
+		<span class="card-item-stripe" aria-hidden="true"></span>
+		<v-img
+			v-if="item.image"
+			:src="item.image"
+			class="card-item-thumb"
+			:alt="item.item_name"
+		></v-img>
 		<div class="card-item-content">
 			<div class="card-item-header">
 				<h4 class="card-item-name">{{ item.item_name }}</h4>
-				<span class="card-item-code">{{ item.item_code }}</span>
 			</div>
 			<div class="card-item-details">
 				<div class="card-item-price">
@@ -77,7 +70,6 @@
 
 <script setup>
 import { computed } from "vue";
-import placeholderImage from "../placeholder-image.png";
 import ItemRateInfoMenu from "./ItemRateInfoMenu.vue";
 import { priceListToSelectedCurrency } from "../../../utils/erpnextCurrency";
 
@@ -89,7 +81,7 @@ const props = defineProps({
 	selectedExchangeRate: { type: Number, default: 1 },
 	selectedConversionRate: { type: Number, default: 1 },
 	hideQtyDecimals: { type: Boolean, default: false },
-	showRateInfo: { type: Boolean, default: true },
+	showRateInfo: { type: Boolean, default: false },
 	getItemRateInfo: { type: Function, required: true },
 	isItemHighlighted: { type: Boolean, default: false },
 	currencySymbol: { type: Function, required: true },
@@ -100,6 +92,16 @@ const props = defineProps({
 });
 
 const emit = defineEmits(["click", "dragstart", "dragend"]);
+
+// A stable colour per item group so cashiers can find "drinks" or "snacks" by eye. The stripe is a hint,
+// never the only cue: the group chips above the tiles carry the same names as text.
+const GROUP_COLORS = ["#0b7285", "#2b8a3e", "#e67700", "#c2255c", "#5f3dc4", "#1864ab", "#a61e4d", "#495057"];
+const groupColor = computed(() => {
+	const name = String(props.item.item_group || "");
+	let hash = 0;
+	for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
+	return GROUP_COLORS[hash % GROUP_COLORS.length];
+});
 
 const primaryCurrency = computed(() => {
 	if (props.context === "purchase") {
@@ -205,7 +207,7 @@ const onDragEnd = (event) => {
 		background-color 0.2s ease;
 	cursor: pointer;
 	display: flex;
-	flex-direction: column;
+	flex-direction: row;
 	height: 100%;
 	width: 100%;
 	box-shadow: var(--pos-elevation-1);
@@ -230,39 +232,22 @@ const onDragEnd = (event) => {
 	background: var(--pos-primary-container);
 }
 
-.card-item-image-container {
-	position: relative;
-	height: 132px;
-	flex-shrink: 0;
-	overflow: hidden;
-	background:
-		linear-gradient(
-			145deg,
-			color-mix(in srgb, var(--pos-primary-container) 42%, transparent),
-			transparent 64%
-		),
-		var(--pos-surface-muted);
+.card-item-stripe {
+	flex: 0 0 8px;
+	background: var(--group-color, var(--pos-primary));
 }
 
-.card-item-image {
-	width: 100%;
-	height: 100%;
-	object-fit: contain; /* Changed to contain to ensure full image visibility */
-	background-color: rgb(var(--v-theme-surface-bright));
-}
-
-/* Image Placeholder Style */
-.image-placeholder {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	width: 100%;
-	height: 100%;
-	background-color: rgb(var(--v-theme-surface-variant));
+.card-item-thumb {
+	flex: 0 0 72px;
+	width: 72px;
+	align-self: center;
+	margin-left: 8px;
+	border-radius: var(--pos-radius-xs);
 }
 
 .card-item-content {
-	padding: var(--pos-space-3);
+	min-width: 0;
+	padding: 10px 12px;
 	display: flex;
 	flex-direction: column;
 	flex-grow: 1;
@@ -277,7 +262,7 @@ const onDragEnd = (event) => {
 }
 
 .card-item-name {
-	font-size: 0.98rem;
+	font-size: 1.1rem;
 	font-weight: 650;
 	margin: 0;
 	line-height: 1.35;
@@ -287,17 +272,6 @@ const onDragEnd = (event) => {
 	-webkit-line-clamp: 2;
 	line-clamp: 2;
 	-webkit-box-orient: vertical;
-}
-
-.card-item-code {
-	font-size: 0.72rem;
-	color: var(--pos-text-secondary);
-	display: block;
-	white-space: nowrap;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	letter-spacing: 0.045em;
-	text-transform: uppercase;
 }
 
 .card-item-details {
@@ -316,13 +290,14 @@ const onDragEnd = (event) => {
 }
 
 .primary-price {
+	white-space: nowrap;
 	display: flex;
 	align-items: baseline;
 	flex-wrap: wrap;
 	gap: var(--pos-space-1);
 	font-weight: 750;
 	color: var(--pos-primary);
-	font-size: 1.08rem;
+	font-size: 1.3rem;
 	font-variant-numeric: tabular-nums;
 }
 
@@ -356,25 +331,9 @@ const onDragEnd = (event) => {
 }
 
 .stock-uom {
+	display: none;
 	font-size: 0.7rem;
 	text-transform: uppercase;
 }
 
-@media (max-width: 768px) {
-	.card-item-image-container {
-		height: 112px;
-	}
-
-	.card-item-content {
-		padding: var(--pos-space-2);
-	}
-
-	.card-item-name {
-		font-size: 0.85rem;
-	}
-
-	.card-item-code {
-		font-size: 0.7rem;
-	}
-}
 </style>

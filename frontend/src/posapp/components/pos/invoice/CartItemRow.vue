@@ -985,18 +985,18 @@ function handleDiscountAmountPaste(event) {
 	align-items: center;
 	justify-content: center;
 	gap: 6px;
-	min-width: 176px;
+	min-width: 144px;
 }
 
 .posa-cart-table__qty-stepper .posa-cart-table__qty-input-shell {
 	flex: 1 1 auto;
-	min-width: 60px;
+	min-width: 52px;
 }
 
 .posa-cart-table__qty-step {
-	width: 44px;
-	height: 44px;
-	flex: 0 0 44px;
+	width: 42px;
+	height: 42px;
+	flex: 0 0 42px;
 }
 
 /* Local styles specific to the row only */

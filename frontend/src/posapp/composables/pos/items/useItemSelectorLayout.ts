@@ -28,19 +28,24 @@ export function useItemSelectorLayout(options: SelectorLayoutOptions = {}) {
 	const scrollThrottle = ref<number | null>(null);
 
 	// Computed Metrics
-	const cardColumns = computed(() => getCardColumns(windowWidth.value));
+	// Measured width of the tile area. Tiles are sized from this, not from the window, because the item
+	// panel is only part of the screen and a window-based column count cuts tiles off.
+	const measuredWidth = ref(0);
+	const MIN_TILE_WIDTH = 150;
+	const cardColumns = computed(() => {
+		if (!measuredWidth.value) return getCardColumns(windowWidth.value);
+		const pad = getCardPadding(windowWidth.value) * 2;
+		const gap = getCardGap(windowWidth.value);
+		return Math.max(
+			1,
+			Math.floor((measuredWidth.value - pad + gap) / (MIN_TILE_WIDTH + gap)),
+		);
+	});
 	const cardGap = computed(() => getCardGap(windowWidth.value));
 	const cardPadding = computed(() => getCardPadding(windowWidth.value));
 
-	const cardRowHeight = computed(() => {
-		if (windowWidth.value <= 768) {
-			return 260;
-		}
-		if (windowWidth.value <= 1200) {
-			return 280;
-		}
-		return 300;
-	});
+	// Compact tiles (no photo): name, price and stock only.
+	const cardRowHeight = computed(() => 112);
 
 	const cardSlotHeight = computed(() => cardRowHeight.value + cardGap.value);
 	const cardSlotWidth = computed(() => cardColumnWidth.value + cardGap.value);
@@ -48,8 +53,8 @@ export function useItemSelectorLayout(options: SelectorLayoutOptions = {}) {
 	const cardContainerWidth = computed(() => {
 		// If we have a reference to the container, try to get its width
 		// Otherwise fallback to an estimated width based on window
-		if (itemsContainerRef.value && itemsContainerRef.value.$el) {
-			return itemsContainerRef.value.$el.clientWidth;
+		if (measuredWidth.value) {
+			return measuredWidth.value;
 		}
 		// Fallback estimation (e.g. 5 columns of regular grid)
 		// This is just a safe default until mounted
@@ -69,12 +74,13 @@ export function useItemSelectorLayout(options: SelectorLayoutOptions = {}) {
 		const paddingTotal = cardPadding.value * 2;
 		const available = Math.max(0, containerWidth - gapTotal - paddingTotal);
 		const width = Math.floor(available / columns);
-		return Math.max(180, width);
+		return Math.max(MIN_TILE_WIDTH, width);
 	});
 
 	// Actions
 	const updateWindowWidth = () => {
 		windowWidth.value = window.innerWidth;
+		measureContainer();
 	};
 
 	const scheduleCardMetricsUpdate = _.debounce(() => {
@@ -85,6 +91,11 @@ export function useItemSelectorLayout(options: SelectorLayoutOptions = {}) {
 		}
 		checkItemContainerOverflow();
 	}, resizeDebounce);
+
+	const measureContainer = () => {
+		const el = getItemsContainerElement();
+		if (el && el.clientWidth) measuredWidth.value = el.clientWidth;
+	};
 
 	const getItemsContainerElement = (): HTMLElement | null => {
 		if (!itemsContainerRef.value) return null;
@@ -147,16 +158,23 @@ export function useItemSelectorLayout(options: SelectorLayoutOptions = {}) {
 	};
 
 	// Lifecycle
+	let containerObserver: ResizeObserver | null = null;
 	onMounted(() => {
 		window.addEventListener("resize", scheduleCardMetricsUpdate);
 		nextTick(() => {
 			updateWindowWidth();
 			checkItemContainerOverflow();
+			const el = getItemsContainerElement();
+			if (el && typeof ResizeObserver !== "undefined") {
+				containerObserver = new ResizeObserver(() => measureContainer());
+				containerObserver.observe(el);
+			}
 		});
 	});
 
 	onUnmounted(() => {
 		window.removeEventListener("resize", scheduleCardMetricsUpdate);
+		containerObserver?.disconnect();
 		if (scrollThrottle.value) {
 			cancelAnimationFrame(scrollThrottle.value);
 		}

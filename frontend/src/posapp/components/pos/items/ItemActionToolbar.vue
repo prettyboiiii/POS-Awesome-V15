@@ -4,18 +4,8 @@
 		:class="{ 'cards--with-mobile-offset': reserveBottomDockSpace }"
 	>
 		<v-row no-gutters align="center" justify="center" class="dynamic-spacing-sm">
-			<v-col cols="12" class="mb-2">
-				<v-select
-					:items="itemsGroup"
-					:label="frappe._('Items Group')"
-					density="compact"
-					variant="solo"
-					hide-details
-					:model-value="modelValue"
-					@update:model-value="$emit('update:modelValue', $event)"
-				></v-select>
-			</v-col>
-			<v-col cols="12" class="mb-2" v-if="posProfile.posa_enable_price_list_dropdown !== false">
+			<!-- The item group picker is now the chip row above the items (ItemGroupChips). -->
+			<v-col cols="7" v-if="posProfile.posa_enable_price_list_dropdown !== false">
 				<v-text-field
 					density="compact"
 					variant="solo"
@@ -26,41 +16,28 @@
 					readonly
 				></v-text-field>
 			</v-col>
-			<v-col cols="12" sm="4" class="dynamic-margin-xs">
+			<v-col cols="5" class="d-flex justify-end">
 				<v-btn-toggle
 					:model-value="itemsView"
 					@update:model-value="$emit('update:itemsView', $event)"
 					color="primary"
 					group
-					density="compact"
+					density="comfortable"
 					rounded
 					class="view-toggle-btn"
 				>
-					<v-btn size="small" value="list">{{ __("List") }}</v-btn>
-					<v-btn size="small" value="card">{{ __("Card") }}</v-btn>
+					<v-btn value="list">{{ __("List") }}</v-btn>
+					<v-btn value="card">{{ __("Card") }}</v-btn>
 				</v-btn-toggle>
 			</v-col>
-			<v-col cols="6" sm="4" class="dynamic-margin-xs">
-				<v-btn
-					size="small"
-					block
-					color="warning"
-					variant="text"
-					@click="$emit('open-offers')"
-					class="action-btn-consistent"
-				>
+			<!-- Offers and coupons only take room when there is something to apply. -->
+			<v-col cols="6" v-if="offersCount > 0" class="dynamic-margin-xs">
+				<v-btn size="small" block color="warning" variant="text" @click="$emit('open-offers')" class="action-btn-consistent">
 					{{ offersCount }} {{ __("Offers") }}
 				</v-btn>
 			</v-col>
-			<v-col cols="6" sm="4" class="dynamic-margin-xs">
-				<v-btn
-					size="small"
-					block
-					color="primary"
-					variant="text"
-					@click="$emit('open-coupons')"
-					class="action-btn-consistent"
-				>
+			<v-col cols="6" v-if="couponsCount > 0" class="dynamic-margin-xs">
+				<v-btn size="small" block color="primary" variant="text" @click="$emit('open-coupons')" class="action-btn-consistent">
 					{{ couponsCount }} {{ __("Coupons") }}
 				</v-btn>
 			</v-col>

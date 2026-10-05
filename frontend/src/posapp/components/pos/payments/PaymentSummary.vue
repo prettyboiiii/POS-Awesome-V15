@@ -92,7 +92,7 @@
 		</v-col>
 
 		<!-- Paid Change (if applicable) -->
-		<v-col cols="12" sm="7" v-if="invoice_doc && change_due > 0 && !invoice_doc.is_return">
+		<v-col cols="12" sm="7" class="payment-summary-grid__paid-change" v-if="invoice_doc && change_due > 0 && !invoice_doc.is_return">
 			<v-text-field
 				variant="solo"
 				color="primary"
@@ -109,7 +109,7 @@
 		</v-col>
 
 		<!-- Credit Change (if applicable) -->
-		<v-col cols="12" sm="5" v-if="invoice_doc && change_due > 0 && !invoice_doc.is_return">
+		<v-col cols="12" sm="5" class="payment-summary-grid__credit-change" v-if="invoice_doc && change_due > 0 && !invoice_doc.is_return">
 			<v-text-field
 				variant="solo"
 				color="primary"

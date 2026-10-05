@@ -50,7 +50,7 @@
 					:selected-exchange-rate="selectedExchangeRate"
 					:selected-conversion-rate="selectedConversionRate"
 					:hide-qty-decimals="hideQtyDecimals"
-					:show-rate-info="showRateInfo"
+					:show-rate-info="false"
 					:get-item-rate-info="getItemRateInfo"
 					:is-item-highlighted="isItemHighlighted(item)"
 					:currency-symbol="currencySymbol"
@@ -96,7 +96,7 @@ const props = defineProps({
 	selectedExchangeRate: { type: Number, default: 1 },
 	selectedConversionRate: { type: Number, default: 1 },
 	hideQtyDecimals: { type: Boolean, default: false },
-	showRateInfo: { type: Boolean, default: true },
+	showRateInfo: { type: Boolean, default: false },
 	getItemRateInfo: { type: Function, required: true },
 	isItemHighlighted: { type: Function, required: true },
 	currencySymbol: { type: Function, required: true },

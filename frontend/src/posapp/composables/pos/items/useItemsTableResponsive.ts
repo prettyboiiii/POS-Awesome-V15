@@ -67,6 +67,11 @@ export function getResponsiveVisibleHeaders(
 	width: number,
 ) {
 	const visibleHeaders = headers.filter((header) => {
+		// Narrow cart: the unit price is only editable by a supervisor, so drop it to make room for the
+		// quantity buttons. The line amount stays.
+		if (width > 0 && width < 640 && header.key === "rate") {
+			return false;
+		}
 		if (
 			header.required ||
 			header.key === "item_name" ||
@@ -86,11 +91,14 @@ export function getResponsiveVisibleHeaders(
 	});
 	const dense = usesDenseColumnLayout(visibleHeaders, width);
 
-	return visibleHeaders.map((header) => ({
-		...header,
-		width: calculateColumnWidth(header, width, dense),
-		minWidth: calculateMinColumnWidth(header, dense),
-	}));
+	return visibleHeaders.map((header) => {
+		const compactQty = header.key === "qty" && width > 0 && width < 640;
+		return {
+			...header,
+			width: compactQty ? 150 : calculateColumnWidth(header, width, dense),
+			minWidth: compactQty ? 150 : calculateMinColumnWidth(header, dense),
+		};
+	});
 }
 
 export function buildFinalVisibleColumns(

@@ -7,6 +7,7 @@ import {
 } from "vue";
 import { useInvoiceStore } from "../../../stores/invoiceStore";
 import { useCustomersStore } from "../../../stores/customersStore";
+import { useUIStore } from "../../../stores/uiStore";
 import {
 	buildCustomerDisplayUrl,
 	createCustomerDisplayTransport,
@@ -81,6 +82,7 @@ export function useCustomerDisplayPublisher({
 	eventBus,
 }: UseCustomerDisplayPublisherOptions) {
 	const invoiceStore = useInvoiceStore();
+	const uiStore = useUIStore();
 	const customersStore = useCustomersStore();
 
 	const channelId = getOrCreateCustomerDisplayChannelId();
@@ -124,6 +126,13 @@ export function useCustomerDisplayPublisher({
 			total_qty,
 			total_amount,
 			updated_at: new Date().toISOString(),
+			completion: uiStore.saleComplete
+				? {
+						total: uiStore.saleComplete.total,
+						received: uiStore.saleComplete.received,
+						change: uiStore.saleComplete.change,
+					}
+				: null,
 		};
 	};
 
@@ -245,6 +254,13 @@ export function useCustomerDisplayPublisher({
 			invoiceStore.deliveryChargesRate,
 			invoiceStore.invoiceDoc?.is_return,
 		],
+		() => {
+			schedulePublish();
+		},
+	);
+
+	watch(
+		() => uiStore.saleComplete,
 		() => {
 			schedulePublish();
 		},

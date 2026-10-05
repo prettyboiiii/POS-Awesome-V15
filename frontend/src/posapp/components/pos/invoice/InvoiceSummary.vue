@@ -424,7 +424,7 @@ const additionalDiscountPercentageDisplay = ref(
 	normalizeDiscountDisplay(props.additional_discount_percentage),
 );
 const isCounterGrid = computed(() => props.presentation === "counter-grid");
-const useCompactSaleDock = computed(() => responsive.windowWidth.value < 1100);
+const useCompactSaleDock = computed(() => responsive.windowWidth.value < 900);
 const exchangeReturnTotal = computed(() =>
 	Number(props.exchangeSession?.returnTotal || Math.abs(Number(props.subtotal || 0))),
 );

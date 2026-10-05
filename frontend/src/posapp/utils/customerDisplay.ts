@@ -29,6 +29,8 @@ export interface CustomerDisplaySnapshot {
 	total_qty: number;
 	total_amount: number;
 	updated_at: string;
+	// Set for a few seconds after a sale is paid: the display shows a thank-you with the change.
+	completion?: { total: number; received: number; change: number } | null;
 }
 
 type SnapshotEnvelope = {

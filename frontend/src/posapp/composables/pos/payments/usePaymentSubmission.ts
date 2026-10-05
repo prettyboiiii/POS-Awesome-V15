@@ -1445,6 +1445,25 @@ export function usePaymentSubmission(options: PaymentSubmissionOptions) {
 				frappe.utils.play_sound("submit");
 			}
 
+			if (!isExchangeSubmission && stores?.uiStore?.showSaleComplete) {
+				const paymentRows = Array.isArray(submittedDocument.payments) ? submittedDocument.payments : [];
+				const received = paymentRows.reduce((sum, row) => sum + (Number(row?.amount) || 0), 0);
+				const total = Number(submittedDocument.rounded_total || submittedDocument.grand_total || 0);
+				const change = Math.max(
+					Number(submittedDocument.paid_change || 0),
+					Number(submittedDocument.change_amount || 0),
+					received - total,
+					0,
+				);
+				stores.uiStore.showSaleComplete({
+					invoice: String(responseInvoiceName || ""),
+					total,
+					received,
+					change: Number(change.toFixed(2)),
+					currency: String(submittedDocument.currency || doc?.currency || ""),
+				});
+			}
+
 			const submittedItems = Array.isArray(submittedDocument.items)
 				? submittedDocument.items
 				: [];

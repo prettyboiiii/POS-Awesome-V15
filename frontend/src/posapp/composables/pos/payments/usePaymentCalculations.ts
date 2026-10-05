@@ -237,14 +237,15 @@ export function usePaymentCalculations(options: PaymentCalculationOptions) {
 	const diff_label = computed(() => {
 		const doc = unref(invoiceDoc);
 		const currency = doc ? doc.currency : "";
+		const translate = (window as any).__ || ((text: string) => text);
 		if (doc?.is_return) {
 			return diff_payment.value < 0
-				? `Remaining Refund (${currency})`
-				: `Change (${currency})`;
+				? translate("Remaining Refund ({0})", [currency])
+				: translate("Change ({0})", [currency]);
 		}
 		return diff_payment.value > 0
-			? `To Be Paid (${currency})`
-			: `Change (${currency})`;
+			? translate("To Be Paid ({0})", [currency])
+			: translate("Change ({0})", [currency]);
 	});
 
 	const total_payments_display = computed(() => {

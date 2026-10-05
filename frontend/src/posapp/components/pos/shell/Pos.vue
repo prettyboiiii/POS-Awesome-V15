@@ -10,6 +10,7 @@
 		<Returns></Returns>
 		<NewAddress></NewAddress>
 		<MpesaPayments></MpesaPayments>
+		<SaleCompleteOverlay></SaleCompleteOverlay>
 		<Variants></Variants>
 		<OpeningDialog
 			v-if="dialog"
@@ -286,6 +287,7 @@
 import ItemsSelector from "../items/ItemsSelector.vue";
 import Invoice from "../Invoice.vue";
 import CounterGridHealthStrip from "./CounterGridHealthStrip.vue";
+import SaleCompleteOverlay from "./SaleCompleteOverlay.vue";
 import OpeningDialog from "../shift/OpeningDialog.vue";
 import Payments from "../Payments.vue";
 import PosOffers from "../offers/PosOffers.vue";
@@ -347,11 +349,11 @@ export default {
 		const counterGridActive = computed(() =>
 			isCounterGridTemplate(posProfile.value, responsive.windowWidth.value),
 		);
-		const useCompactPosSwitcher = computed(() => responsive.windowWidth.value < 1100);
+		const useCompactPosSwitcher = computed(() => responsive.windowWidth.value < 900);
 		const compactPanel = ref("selector");
 		const isPhone = computed(() => responsive.isPhone.value);
 		const showBottomDock = computed(
-			() => !counterGridActive.value && !dialog.value && responsive.windowWidth.value < 1100,
+			() => !counterGridActive.value && !dialog.value && responsive.windowWidth.value < 900,
 		);
 		const counterItemSearchOpen = ref(false);
 		const counterDirectEntryPending = ref(false);
@@ -905,6 +907,7 @@ export default {
 		ItemsSelector,
 		Invoice,
 		CounterGridHealthStrip,
+		SaleCompleteOverlay,
 		OpeningDialog,
 		Payments,
 		Drafts,

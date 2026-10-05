@@ -13,7 +13,25 @@
 			</div>
 		</header>
 
-		<div v-if="!channelId" class="display-empty-state">
+		<div v-if="completion" class="display-thanks" data-testid="display-thanks">
+			<h2>{{ __("Thank you") }}</h2>
+			<dl class="display-thanks__rows">
+				<div>
+					<dt>{{ __("Total") }}</dt>
+					<dd>{{ formatCurrency(completion.total) }}</dd>
+				</div>
+				<div>
+					<dt>{{ __("Received") }}</dt>
+					<dd>{{ formatCurrency(completion.received) }}</dd>
+				</div>
+				<div v-if="completion.change > 0" class="display-thanks__change">
+					<dt>{{ __("Change") }}</dt>
+					<dd>{{ formatCurrency(completion.change) }}</dd>
+				</div>
+			</dl>
+		</div>
+
+		<div v-else-if="!channelId" class="display-empty-state">
 			<h2>{{ __("Customer display channel is missing") }}</h2>
 			<p>{{ __("Open this screen from POS Menu -> Open Customer Display.") }}</p>
 		</div>
@@ -44,7 +62,7 @@
 			</table>
 		</div>
 
-		<footer class="display-footer">
+		<footer v-if="!completion" class="display-footer">
 			<div class="display-total-label">{{ __("Total") }}</div>
 			<div class="display-total-value">{{ formatCurrency(totalAmount) }}</div>
 		</footer>
@@ -121,6 +139,7 @@ onBeforeUnmount(() => {
 	}
 });
 
+const completion = computed(() => snapshot.value.completion || null);
 const rows = computed(() => snapshot.value.items || []);
 const itemCount = computed(() => rows.value.length);
 const totalAmount = computed(() =>
@@ -139,7 +158,7 @@ const updatedLabel = computed(() => {
 	if (!snapshot.value.updated_at) return "--";
 	const dt = new Date(snapshot.value.updated_at);
 	if (Number.isNaN(dt.getTime())) return "--";
-	return dt.toLocaleTimeString();
+	return dt.toLocaleTimeString("th-TH", { hour12: false });
 });
 
 const formatQty = (value: number) => {
@@ -160,7 +179,7 @@ const formatCurrency = (value: number) => {
 		});
 	}
 	try {
-		return new Intl.NumberFormat(undefined, {
+		return new Intl.NumberFormat("th-TH", {
 			style: "currency",
 			currency,
 			minimumFractionDigits: 2,
@@ -307,5 +326,43 @@ const formatCurrency = (value: number) => {
 	.display-table td {
 		padding: 10px 12px;
 	}
+}
+
+.display-thanks {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 24px;
+	text-align: center;
+}
+
+.display-thanks h2 {
+	font-size: 4rem;
+	margin: 0;
+}
+
+.display-thanks__rows {
+	margin: 0;
+	display: grid;
+	gap: 12px;
+	font-size: 2.2rem;
+}
+
+.display-thanks__rows > div {
+	display: flex;
+	justify-content: space-between;
+	gap: 48px;
+}
+
+.display-thanks__rows dd {
+	margin: 0;
+	font-variant-numeric: tabular-nums;
+	font-weight: 700;
+}
+
+.display-thanks__change {
+	font-size: 3.4rem;
 }
 </style>

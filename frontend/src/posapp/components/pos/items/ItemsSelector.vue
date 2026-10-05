@@ -108,6 +108,13 @@
 					@save="applyItemSettings"
 				/>
 
+				<ItemGroupChips
+					v-if="presentation !== 'counter-grid-dialog'"
+					v-model="item_group"
+					:groups="items_group"
+					:counts="itemGroupCounts"
+				/>
+
 				<v-card flat class="selector-section-card selector-results-card pos-themed-card">
 					<v-row class="items">
 						<v-col cols="12" class="pt-0 mt-0">
@@ -245,7 +252,7 @@
 			:active-price-list="active_price_list"
 			:offers-count="offersCount"
 			:coupons-count="couponsCount"
-			:reserve-bottom-dock-space="context === 'pos' && responsive.windowWidth.value < 1100"
+			:reserve-bottom-dock-space="context === 'pos' && responsive.windowWidth.value < 900"
 			@open-offers="uiStore.setActiveView('offers')"
 			@open-coupons="uiStore.setActiveView('coupons')"
 		/>
@@ -290,6 +297,7 @@ import * as _ from "lodash";
 
 import CameraScanner from "./CameraScanner.vue";
 import ItemActionToolbar from "./ItemActionToolbar.vue";
+import ItemGroupChips from "./ItemGroupChips.vue";
 import ItemSettingsDialog from "./ItemSettingsDialog.vue";
 import ItemHeader from "./ItemHeader.vue";
 import ItemsSelectorCards from "./ItemsSelectorCards.vue";
@@ -540,6 +548,14 @@ const usesLimitSearch = computed(() =>
 const { stockSettings: stock_settings_ref } = storeToRefs(uiStore);
 const stock_settings = computed(() => stock_settings_ref.value || {});
 const items_group = computed(() => itemsIntegration.items_group.value || []);
+const itemGroupCounts = computed(() => {
+	const counts = {};
+	for (const item of items.value || []) {
+		const group = item?.item_group;
+		if (group) counts[group] = (counts[group] || 0) + 1;
+	}
+	return counts;
+});
 const offersCount = computed(() => uiStore.offersCount || 0);
 const couponsCount = computed(() => uiStore.couponsCount || 0);
 // selected_currency is now a local ref synced via eventBus
