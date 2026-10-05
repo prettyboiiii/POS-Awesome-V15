@@ -27,7 +27,8 @@ type ColumnWidthConfig = { min: number; max: number; ratio: number };
 
 const STANDARD_COLUMN_WIDTHS: Record<string, ColumnWidthConfig> = {
 	item_name: { min: 160, max: 210, ratio: 0.23 },
-	qty: { min: 92, max: 112, ratio: 0.11 },
+	// Quantity needs room for the -/+ buttons (CartItemRow).
+	qty: { min: 168, max: 190, ratio: 0.22 },
 	uom: { min: 92, max: 112, ratio: 0.1 },
 	rate: { min: 92, max: 110, ratio: 0.105 },
 	amount: { min: 100, max: 118, ratio: 0.11 },
@@ -40,7 +41,7 @@ const STANDARD_COLUMN_WIDTHS: Record<string, ColumnWidthConfig> = {
 
 const DENSE_COLUMN_WIDTHS: Record<string, ColumnWidthConfig> = {
 	item_name: { min: 148, max: 178, ratio: 0.17 },
-	qty: { min: 82, max: 96, ratio: 0.085 },
+	qty: { min: 150, max: 170, ratio: 0.17 },
 	uom: { min: 72, max: 88, ratio: 0.075 },
 	rate: { min: 86, max: 98, ratio: 0.09 },
 	amount: { min: 94, max: 108, ratio: 0.1 },

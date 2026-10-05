@@ -522,6 +522,18 @@ const flyConfig = reactive({ speed: 0.6, easing: "ease-in-out" });
 
 // 3. Computed Properties
 const pos_profile = computed(() => (itemsIntegration.posProfile.value || {}) as any);
+// Apply the profile's "Default Card View" once, when the profile first arrives. After that the
+// cashier's own choice from the view toggle wins.
+let defaultViewApplied = false;
+watch(
+	() => pos_profile.value?.posa_default_card_view,
+	(value) => {
+		if (defaultViewApplied || value === undefined) return;
+		defaultViewApplied = true;
+		if (parseBooleanSetting(value)) items_view.value = "card";
+	},
+	{ immediate: true },
+);
 const usesLimitSearch = computed(() =>
 	parseBooleanSetting(pos_profile.value?.posa_use_limit_search ?? pos_profile.value?.pose_use_limit_search),
 );

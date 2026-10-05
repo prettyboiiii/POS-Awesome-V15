@@ -112,42 +112,68 @@
 
 			<!-- Quantity Column -->
 			<td v-else-if="column.key === 'qty'" v-bind="getCellAttrs('qty', 'text-center')">
-				<div
-					class="posa-cart-table__qty-input-shell amount-value number-field-rtl"
-					:class="{
-						'negative-number': isNegative(item.qty),
-						'large-number': qtyLength > 6,
-						'rtl-layout': isRTL,
-					}"
-					:data-length="qtyLength"
-					:title="formatFloat(item.qty, hideQtyDecimals ? 0 : undefined)"
-					data-pos-keyboard-target="cart-qty"
-					@click.stop="focusQtyInput"
-				>
-					<v-text-field
-						:model-value="editingQtyValue"
-						:aria-label="__('Quantity')"
-						density="compact"
-						variant="outlined"
-						hide-details
-						class="posa-cart-table__qty-input posa-cart-table__qty-input--direct"
-						@update:model-value="handleQtyInputUpdate"
-						@focus="handleQtyFocus"
-						@blur="closeQtyEdit"
-						@keydown="handleQtyKeydown"
-						@keydown.enter.stop.prevent="submitQtyEdit"
-						@keydown.esc.stop.prevent="cancelQtyEdit"
-						@paste="handleQtyPaste"
-						@click.stop
-						ref="qtyInput"
-						type="text"
-						inputmode="decimal"
-						autocomplete="off"
-						autocorrect="off"
-						autocapitalize="off"
-						:spellcheck="false"
+				<div class="posa-cart-table__qty-stepper">
+					<v-btn
+						icon
+						variant="tonal"
+						color="primary"
+						class="posa-cart-table__qty-step"
 						:disabled="disableInput"
-					></v-text-field>
+						:aria-label="__('Decrease quantity')"
+						data-testid="cart-qty-minus"
+						@click.stop="emit('minus-click', item)"
+					>
+						<v-icon>mdi-minus</v-icon>
+					</v-btn>
+					<div
+						class="posa-cart-table__qty-input-shell amount-value number-field-rtl"
+						:class="{
+							'negative-number': isNegative(item.qty),
+							'large-number': qtyLength > 6,
+							'rtl-layout': isRTL,
+						}"
+						:data-length="qtyLength"
+						:title="formatFloat(item.qty, hideQtyDecimals ? 0 : undefined)"
+						data-pos-keyboard-target="cart-qty"
+						@click.stop="focusQtyInput"
+					>
+						<v-text-field
+							:model-value="editingQtyValue"
+							:aria-label="__('Quantity')"
+							density="compact"
+							variant="outlined"
+							hide-details
+							class="posa-cart-table__qty-input posa-cart-table__qty-input--direct"
+							@update:model-value="handleQtyInputUpdate"
+							@focus="handleQtyFocus"
+							@blur="closeQtyEdit"
+							@keydown="handleQtyKeydown"
+							@keydown.enter.stop.prevent="submitQtyEdit"
+							@keydown.esc.stop.prevent="cancelQtyEdit"
+							@paste="handleQtyPaste"
+							@click.stop
+							ref="qtyInput"
+							type="text"
+							inputmode="decimal"
+							autocomplete="off"
+							autocorrect="off"
+							autocapitalize="off"
+							:spellcheck="false"
+							:disabled="disableInput"
+						></v-text-field>
+					</div>
+					<v-btn
+						icon
+						variant="tonal"
+						color="primary"
+						class="posa-cart-table__qty-step"
+						:disabled="disableInput"
+						:aria-label="__('Increase quantity')"
+						data-testid="cart-qty-plus"
+						@click.stop="emit('add-one', item)"
+					>
+						<v-icon>mdi-plus</v-icon>
+					</v-btn>
 				</div>
 			</td>
 
@@ -954,6 +980,25 @@ function handleDiscountAmountPaste(event) {
 </script>
 
 <style scoped>
+.posa-cart-table__qty-stepper {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 6px;
+	min-width: 176px;
+}
+
+.posa-cart-table__qty-stepper .posa-cart-table__qty-input-shell {
+	flex: 1 1 auto;
+	min-width: 60px;
+}
+
+.posa-cart-table__qty-step {
+	width: 44px;
+	height: 44px;
+	flex: 0 0 44px;
+}
+
 /* Local styles specific to the row only */
 .currency-display {
 	display: flex;
