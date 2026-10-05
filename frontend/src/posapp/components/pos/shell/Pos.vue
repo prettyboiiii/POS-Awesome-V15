@@ -11,6 +11,7 @@
 		<NewAddress></NewAddress>
 		<MpesaPayments></MpesaPayments>
 		<SaleCompleteOverlay></SaleCompleteOverlay>
+		<MemberSheet></MemberSheet>
 		<Variants></Variants>
 		<OpeningDialog
 			v-if="dialog"
@@ -288,6 +289,7 @@ import ItemsSelector from "../items/ItemsSelector.vue";
 import Invoice from "../Invoice.vue";
 import CounterGridHealthStrip from "./CounterGridHealthStrip.vue";
 import SaleCompleteOverlay from "./SaleCompleteOverlay.vue";
+import MemberSheet from "./MemberSheet.vue";
 import OpeningDialog from "../shift/OpeningDialog.vue";
 import Payments from "../Payments.vue";
 import PosOffers from "../offers/PosOffers.vue";
@@ -908,6 +910,7 @@ export default {
 		Invoice,
 		CounterGridHealthStrip,
 		SaleCompleteOverlay,
+		MemberSheet,
 		OpeningDialog,
 		Payments,
 		Drafts,

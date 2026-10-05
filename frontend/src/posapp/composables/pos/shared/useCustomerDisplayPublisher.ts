@@ -8,6 +8,7 @@ import {
 import { useInvoiceStore } from "../../../stores/invoiceStore";
 import { useCustomersStore } from "../../../stores/customersStore";
 import { useUIStore } from "../../../stores/uiStore";
+import { useMemberStore } from "../../../stores/memberStore";
 import {
 	buildCustomerDisplayUrl,
 	createCustomerDisplayTransport,
@@ -84,6 +85,7 @@ export function useCustomerDisplayPublisher({
 	const invoiceStore = useInvoiceStore();
 	const uiStore = useUIStore();
 	const customersStore = useCustomersStore();
+	const memberStore = useMemberStore();
 
 	const channelId = getOrCreateCustomerDisplayChannelId();
 	const transport = createCustomerDisplayTransport(channelId);
@@ -133,6 +135,17 @@ export function useCustomerDisplayPublisher({
 						change: uiStore.saleComplete.change,
 					}
 				: null,
+			member: memberStore.summary?.is_member
+				? { name: memberStore.summary.customer_name, points: memberStore.summary.points }
+				: null,
+			invite:
+				memberStore.sheet.open &&
+				memberStore.sheet.payload &&
+				!memberStore.sheet.payload.member &&
+				(memberStore.sheet.payload.saving > 0 || memberStore.sheet.payload.earn > 0)
+					? { saving: memberStore.sheet.payload.saving, earn: memberStore.sheet.payload.earn }
+					: null,
+			line_qr: toText(posProfile.value?.mart_line_oa_qr),
 		};
 	};
 
@@ -268,6 +281,14 @@ export function useCustomerDisplayPublisher({
 
 	watch(
 		() => customersStore.selectedCustomer,
+		() => {
+			schedulePublish();
+		},
+	);
+
+	// The member chip, and the invitation shown while the cashier asks "member?".
+	watch(
+		() => [memberStore.summary, memberStore.sheet.open, memberStore.sheet.payload],
 		() => {
 			schedulePublish();
 		},

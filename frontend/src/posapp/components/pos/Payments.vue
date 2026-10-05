@@ -230,6 +230,7 @@
 							:credit-change="credit_change"
 							:is-write-off-change="is_write_off_change"
 							:is-credit-sale="is_credit_sale"
+							:credit-open="creditOpen"
 							:is-cashback="is_cashback"
 							:is-credit-return="is_credit_return"
 							:new-credit-due-date="new_credit_due_date"
@@ -366,6 +367,7 @@ import { useToastStore } from "../../stores/toastStore.js";
 import { useSyncStore } from "../../stores/syncStore.ts";
 import { useSocketStore } from "../../stores/socketStore";
 import { useEmployeeStore } from "../../stores/employeeStore";
+import { useMemberStore } from "../../stores/memberStore";
 
 // Composables
 import { usePaymentCalculations } from "../../composables/pos/payments/usePaymentCalculations";
@@ -945,6 +947,10 @@ const visiblePaymentMethods = computed(() =>
 );
 
 const creditSaleAllowed = computed(() => parseBooleanSetting(pos_profile.value?.posa_allow_credit_sale));
+
+// Only a customer with an opened credit line (see the member chip) is offered pay-later.
+const memberStore = useMemberStore();
+const creditOpen = computed(() => Number(memberStore.summary?.credit_limit || 0) > 0);
 
 const giftCardAppliedAmount = computed(() =>
 	(Array.isArray(giftCardRedemptions.value) ? giftCardRedemptions.value : []).reduce(

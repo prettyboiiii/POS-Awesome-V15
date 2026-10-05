@@ -5,6 +5,7 @@ import {
 	loadDocumentSourceRecord,
 } from "../../../utils/documentSources";
 import { resolvePosDocumentDoctype } from "../../../utils/posDocumentMode";
+import { askMemberBeforePay } from "./beforePay";
 
 declare const __: (_text: string, _args?: any[]) => string;
 declare const frappe: any;
@@ -34,6 +35,12 @@ export async function show_payment(context: any) {
 				title: __(`Select items to sell`),
 				color: "error",
 			});
+			return;
+		}
+
+		// Ask "member?" and show deals while the cashier can still go back to the cart. If a member is
+		// picked, the cart is re-priced for them before the invoice below is built.
+		if (!(await askMemberBeforePay(context))) {
 			return;
 		}
 

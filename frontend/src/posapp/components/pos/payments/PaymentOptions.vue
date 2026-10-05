@@ -3,7 +3,7 @@
 		<div class="payment-options-layout">
 			<div class="payment-options-toggles">
 				<v-row class="pa-1" align="start" no-gutters>
-					<v-col cols="12" v-if="posProfile.posa_allow_credit_sale && !invoiceDoc.is_return">
+					<v-col cols="12" v-if="posProfile.posa_allow_credit_sale && creditOpen && !invoiceDoc.is_return">
 						<v-switch
 							:model-value="isCreditSale"
 							color="primary"
@@ -11,6 +11,11 @@
 							class="my-0 pa-1"
 							@update:model-value="$emit('update:isCreditSale', $event)"
 						></v-switch>
+					</v-col>
+					<v-col cols="12" v-else-if="posProfile.posa_allow_credit_sale && !invoiceDoc.is_return">
+						<p class="payment-options-panel__note" data-testid="credit-not-open">
+							{{ __("This customer has no pay-later credit") }}
+						</p>
 					</v-col>
 					<v-col
 						cols="12"
@@ -176,6 +181,13 @@ const props = defineProps({
 	isCreditSale: {
 		type: Boolean,
 		default: false,
+	},
+	// Pay-later is offered only to a customer whose credit line the owner has opened; the server enforces
+	// the same rule on submit (mart_shop.members.invoice_before_submit). Defaults to open so other callers
+	// behave as before.
+	creditOpen: {
+		type: Boolean,
+		default: true,
 	},
 	isCashback: {
 		type: Boolean,

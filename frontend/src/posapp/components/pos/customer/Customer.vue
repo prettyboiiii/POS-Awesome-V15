@@ -124,6 +124,7 @@
 				<span class="customer-load-status__percent"> {{ customerLoadPercent }}% </span>
 			</div>
 		</div>
+		<MemberChip />
 		<!-- Update customer modal -->
 		<div class="mt-4">
 			<UpdateCustomer />
@@ -243,6 +244,7 @@ import { ref, computed, watch, onMounted, onBeforeUnmount, getCurrentInstance, n
 import { storeToRefs } from "pinia";
 import _ from "lodash";
 import UpdateCustomer from "../dialogs/customer/UpdateCustomer.vue";
+import MemberChip from "./MemberChip.vue";
 import { useCustomersStore } from "../../../stores/customersStore.js";
 import { customerMatchesSearchTerm } from "../../../stores/customers/customerSearch";
 import { useOnlineStatus } from "../../../composables/core/useOnlineStatus";
@@ -256,6 +258,7 @@ export default {
 	},
 	components: {
 		UpdateCustomer,
+		MemberChip,
 	},
 	setup(props, { expose }) {
 		const { proxy } = getCurrentInstance();

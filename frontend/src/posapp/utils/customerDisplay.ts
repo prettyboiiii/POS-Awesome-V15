@@ -31,6 +31,11 @@ export interface CustomerDisplaySnapshot {
 	updated_at: string;
 	// Set for a few seconds after a sale is paid: the display shows a thank-you with the change.
 	completion?: { total: number; received: number; change: number } | null;
+	// Shop membership. `member` is the picked member; `invite` is shown to a walk-in while the cashier
+	// asks "member?"; `line_qr` is the shop's LINE Official Account QR image (an /files/... path).
+	member?: { name: string; points: number } | null;
+	invite?: { saving: number; earn: number } | null;
+	line_qr?: string;
 }
 
 type SnapshotEnvelope = {

@@ -13,6 +13,20 @@
 			</div>
 		</header>
 
+		<div v-if="invite && !completion" class="display-invite" data-testid="display-invite">
+			<div>
+				<h2>{{ __("Join as a member - free") }}</h2>
+				<p v-if="invite.saving > 0">
+					{{ __("Save {0} on this bill", [formatCurrency(invite.saving)]) }}
+				</p>
+				<p v-if="invite.earn > 0">{{ __("Earn {0} points on this bill", [invite.earn]) }}</p>
+			</div>
+			<img v-if="lineQr" :src="lineQr" :alt="__('LINE Official Account')" class="display-invite__qr" />
+		</div>
+		<div v-else-if="member && !completion" class="display-member" data-testid="display-member">
+			{{ member.name }} · {{ __("{0} points", [member.points]) }}
+		</div>
+
 		<div v-if="completion" class="display-thanks" data-testid="display-thanks">
 			<h2>{{ __("Thank you") }}</h2>
 			<dl class="display-thanks__rows">
@@ -140,6 +154,9 @@ onBeforeUnmount(() => {
 });
 
 const completion = computed(() => snapshot.value.completion || null);
+const member = computed(() => snapshot.value.member || null);
+const invite = computed(() => snapshot.value.invite || null);
+const lineQr = computed(() => snapshot.value.line_qr || "");
 const rows = computed(() => snapshot.value.items || []);
 const itemCount = computed(() => rows.value.length);
 const totalAmount = computed(() =>
@@ -192,6 +209,48 @@ const formatCurrency = (value: number) => {
 </script>
 
 <style scoped>
+.display-invite {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 24px;
+	margin: 16px 0;
+	padding: 20px 28px;
+	border-radius: 20px;
+	background: #e8f5e9;
+	color: #1b5e20;
+}
+
+.display-invite h2 {
+	margin: 0 0 8px;
+	font-size: 2.2rem;
+}
+
+.display-invite p {
+	margin: 4px 0;
+	font-size: 1.6rem;
+	font-weight: 600;
+}
+
+.display-invite__qr {
+	width: 160px;
+	height: 160px;
+	object-fit: contain;
+	background: #fff;
+	border-radius: 12px;
+	padding: 8px;
+}
+
+.display-member {
+	margin: 12px 0;
+	padding: 12px 20px;
+	border-radius: 14px;
+	background: #e8f5e9;
+	color: #1b5e20;
+	font-size: 1.5rem;
+	font-weight: 700;
+}
+
 .customer-display-screen {
 	height: 100%;
 	display: grid;
