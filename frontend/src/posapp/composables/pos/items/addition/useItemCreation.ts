@@ -107,6 +107,8 @@ export function useItemCreation() {
 		new_item.posa_offers = JSON.stringify([]);
 		new_item.posa_offer_applied = 0;
 		new_item.posa_is_offer = item.posa_is_offer;
+		// Set when the cashier tapped the item instead of scanning it; feeds the favourites ranking.
+		new_item.mart_hand_picked = context.handPicked ? 1 : 0;
 		new_item.posa_is_replace = item.posa_is_replace || null;
 		new_item.is_free_item = 0;
 		new_item.is_bundle = 0;

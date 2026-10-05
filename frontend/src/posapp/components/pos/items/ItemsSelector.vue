@@ -156,6 +156,37 @@
 								@alternate-back="exitAlternateMode"
 								@list-scroll="onListScroll"
 							/>
+							<ItemCategoryLanding
+								v-else-if="showCategoryLanding"
+								:items="filteredItems"
+								:groups="items_group"
+								:picks="handPicks"
+								@select-group="item_group = $event"
+							>
+								<template #favourite="{ item }">
+									<ItemCard
+										:item="item"
+										:pos-profile="pos_profile"
+										:context="context"
+										:selected-currency="selected_currency"
+										:selected-exchange-rate="selected_exchange_rate"
+										:selected-conversion-rate="selected_conversion_rate"
+										:hide-qty-decimals="hide_qty_decimals"
+										:show-rate-info="false"
+										:get-item-rate-info="getItemRateInfo"
+										:is-item-highlighted="isItemHighlighted(item)"
+										:currency-symbol="currencySymbol"
+										:format-currency="memoizedFormatCurrency"
+										:format-number="memoizedFormatNumber"
+										:rate-precision="ratePrecision"
+										:is-negative="isNegative"
+										starred
+										@click="select_item"
+										@dragstart="onDragStart"
+										@dragend="onDragEnd"
+									/>
+								</template>
+							</ItemCategoryLanding>
 							<ItemsSelectorCards
 								v-else-if="items_view === 'card'"
 								ref="itemsContainer"
@@ -187,6 +218,7 @@
 								:no-items-title="__('No items found')"
 								:no-items-subtitle="__('Try adjusting your search or filters')"
 								:clear-search-label="__('Clear Search')"
+								:picks="handPicks"
 								@select-item="select_item"
 								@dragstart="onDragStart"
 								@dragend="onDragEnd"
@@ -296,6 +328,8 @@ import * as _ from "lodash";
 
 import CameraScanner from "./CameraScanner.vue";
 import ItemActionToolbar from "./ItemActionToolbar.vue";
+import ItemCard from "./ItemCard.vue";
+import ItemCategoryLanding from "./ItemCategoryLanding.vue";
 import ItemGroupChips from "./ItemGroupChips.vue";
 import ItemSettingsDialog from "./ItemSettingsDialog.vue";
 import ItemHeader from "./ItemHeader.vue";
@@ -348,6 +382,7 @@ import { useItemsSelectorDisplayBindings } from "../../../composables/pos/items/
 import { useCustomersStore } from "../../../stores/customersStore";
 import { useToastStore } from "../../../stores/toastStore";
 import { useUIStore } from "../../../stores/uiStore";
+import { bumpHandPick, handPicks, loadHandPicks } from "../../../utils/handPicks";
 import { useInvoiceStore } from "../../../stores/invoiceStore";
 import { useEmployeeStore } from "../../../stores/employeeStore";
 
@@ -589,10 +624,25 @@ const {
 	syncedItemsCount = ref(0),
 } = itemsIntegration;
 
+// Card view opens on categories (and the favourites) until the cashier picks a category or searches.
+const showCategoryLanding = computed(
+	() =>
+		props.presentation !== "counter-grid-dialog" &&
+		items_view.value === "card" &&
+		item_group.value === "ALL" &&
+		!String(search_input.value || "").trim() &&
+		!String(first_search.value || "").trim(),
+);
+
 const displayedItems = computed(() => {
-	const baseItems = Array.isArray(filteredItems.value) ? filteredItems.value : [];
+	let baseItems = Array.isArray(filteredItems.value) ? filteredItems.value : [];
 	const rawTerm = first_search.value;
 	const term = (typeof rawTerm === "string" ? rawTerm : "").trim().toLowerCase();
+	// Inside a category the items cashiers tap most come first (stable sort, the rest keep their order).
+	if (!term && item_group.value !== "ALL" && Object.keys(handPicks.value).length) {
+		const picks = handPicks.value;
+		baseItems = [...baseItems].sort((a, b) => (picks[b.item_code] || 0) - (picks[a.item_code] || 0));
+	}
 	const searchAlreadyApplied = term.length >= 3 && filteredItemsSearchTerm.value === term;
 	return filterAndPaginate(baseItems, {
 		searchTerm: term,
@@ -965,6 +1015,7 @@ const itemSelectorLayoutLifecycle = useItemsSelectorLayoutLifecycle({
 const add_item = async (item, optionsOrQty: any = {}) => {
 	if (props.context === "pos") {
 		let options: any = typeof optionsOrQty === "object" ? optionsOrQty : { qty: optionsOrQty };
+		if (options.handPicked) bumpHandPick(item?.item_code);
 		let requestedQty = options.qty !== undefined ? options.qty : qty.value || 0;
 		requestedQty =
 			requestedQty === "" || requestedQty == null ? 1 : Math.abs(parseFloat(requestedQty) || 1);
@@ -1367,6 +1418,19 @@ const applyItemSettings = (settings) => {
 const handleRemoteStockAdjustment = (payload: unknown) => {
 	itemAvailability.handleInvoiceStockAdjusted(payload);
 };
+
+// Frequently used items come from the server (sales lines flagged as tapped); refresh after each sale.
+watch(
+	() => pos_profile.value?.name,
+	(name) => void loadHandPicks(name),
+	{ immediate: true },
+);
+watch(
+	() => uiStore.saleComplete,
+	(done) => {
+		if (done) void loadHandPicks(pos_profile.value?.name);
+	},
+);
 
 onMounted(async () => {
 	itemAvailability.initAvailability();

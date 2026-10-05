@@ -761,6 +761,8 @@ export function useItemAddition() {
 				} else {
 					// Existing item update
 					const cur_item = context.items[index];
+					// A tap on a line first added by scanning still counts as a hand pick.
+					if (context.handPicked) cur_item.mart_hand_picked = 1;
 					const qtyDelta = context.isReturnInvoice
 						? -Math.abs(qtyOrOne(new_item.qty))
 						: qtyOrOne(new_item.qty);

@@ -23,7 +23,16 @@
 		></v-img>
 		<div class="card-item-content">
 			<div class="card-item-header">
-				<h4 class="card-item-name">{{ item.item_name }}</h4>
+				<h4 class="card-item-name">
+					<v-icon
+						v-if="starred"
+						size="small"
+						color="amber-darken-2"
+						class="card-item-star"
+						:aria-label="__('Frequently used')"
+						>mdi-star</v-icon
+					>{{ item.item_name }}
+				</h4>
 			</div>
 			<div class="card-item-details">
 				<div class="card-item-price">
@@ -72,6 +81,9 @@
 import { computed } from "vue";
 import ItemRateInfoMenu from "./ItemRateInfoMenu.vue";
 import { priceListToSelectedCurrency } from "../../../utils/erpnextCurrency";
+import { groupColorFor } from "../../../utils/groupColor";
+
+const __ = window.__;
 
 const props = defineProps({
 	item: { type: Object, required: true },
@@ -89,19 +101,12 @@ const props = defineProps({
 	formatNumber: { type: Function, required: true },
 	ratePrecision: { type: Function, required: true },
 	isNegative: { type: Function, default: (val) => val < 0 },
+	starred: { type: Boolean, default: false },
 });
 
 const emit = defineEmits(["click", "dragstart", "dragend"]);
 
-// A stable colour per item group so cashiers can find "drinks" or "snacks" by eye. The stripe is a hint,
-// never the only cue: the group chips above the tiles carry the same names as text.
-const GROUP_COLORS = ["#0b7285", "#2b8a3e", "#e67700", "#c2255c", "#5f3dc4", "#1864ab", "#a61e4d", "#495057"];
-const groupColor = computed(() => {
-	const name = String(props.item.item_group || "");
-	let hash = 0;
-	for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
-	return GROUP_COLORS[hash % GROUP_COLORS.length];
-});
+const groupColor = computed(() => groupColorFor(props.item.item_group));
 
 const primaryCurrency = computed(() => {
 	if (props.context === "purchase") {
@@ -230,6 +235,11 @@ const onDragEnd = (event) => {
 		var(--pos-elevation-2);
 	transform: translate3d(0, -1px, 0);
 	background: var(--pos-primary-container);
+}
+
+.card-item-star {
+	margin-inline-end: 2px;
+	vertical-align: -2px;
 }
 
 .card-item-stripe {

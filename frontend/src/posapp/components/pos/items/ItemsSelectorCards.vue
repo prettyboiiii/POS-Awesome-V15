@@ -58,6 +58,7 @@
 					:format-number="formatNumber"
 					:rate-precision="ratePrecision"
 					:is-negative="isNegative"
+					:starred="(picks[item.item_code] || 0) > 0"
 					:style="{
 						width: cardColumnWidth + 'px',
 						height: cardRowHeight + 'px',
@@ -107,6 +108,7 @@ const props = defineProps({
 	noItemsTitle: { type: String, default: "" },
 	noItemsSubtitle: { type: String, default: "" },
 	clearSearchLabel: { type: String, default: "" },
+	picks: { type: Object, default: () => ({}) },
 });
 
 const emit = defineEmits(["select-item", "dragstart", "dragend", "virtual-range-update", "clear-search"]);

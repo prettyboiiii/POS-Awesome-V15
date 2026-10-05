@@ -19,7 +19,7 @@ type ItemSelectionContext = {
 	addItem:
 		| ((
 				_item: SelectableItem,
-				_options?: { postAddFocus?: "default" | "qty" },
+				_options?: { postAddFocus?: "default" | "qty"; handPicked?: boolean },
 		  ) => Promise<void> | void)
 		| null;
 	clearSearch: (() => void) | null;
@@ -345,7 +345,7 @@ export function useItemSelection() {
 
 	function handleItemSelection(event: MouseEvent, item: SelectableItem) {
 		triggerFlyAnimation(event, false);
-		if (ctx.addItem) ctx.addItem(item);
+		if (ctx.addItem) ctx.addItem(item, { handPicked: true });
 	}
 
 	async function handleRowClick(
@@ -353,7 +353,7 @@ export function useItemSelection() {
 		{ item }: { item: SelectableItem },
 	) {
 		triggerFlyAnimation(event, true);
-		if (ctx.addItem) await ctx.addItem(item);
+		if (ctx.addItem) await ctx.addItem(item, { handPicked: true });
 	}
 
 	function handleSearchKeydown(event: KeyboardEvent) {
