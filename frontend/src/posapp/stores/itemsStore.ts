@@ -659,7 +659,7 @@ export const useItemsStore = defineStore("items", () => {
 				limit: resolveHotCatalogLimit(),
 				days: HOT_CATALOG_DAYS,
 				include_description: 0,
-				include_image: 0,
+				include_image: 1,
 				item_groups: getProfileItemGroups(),
 			});
 			if (requestToken !== hotCatalogRequestToken) {

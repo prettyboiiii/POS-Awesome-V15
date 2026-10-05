@@ -1002,7 +1002,7 @@ def get_items(
     start_after_item_code=None,
     modified_after=None,
     include_description=False,
-    include_image=False,
+    include_image=True,
     item_groups=None,
 ):
     started_at = time.perf_counter()
@@ -1108,7 +1108,7 @@ def get_hot_items(
     limit=None,
     days=120,
     include_description=False,
-    include_image=False,
+    include_image=True,
     item_groups=None,
 ):
     """Return a register-local hot catalog for Fast Counter Mode.

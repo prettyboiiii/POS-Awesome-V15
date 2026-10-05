@@ -1,6 +1,6 @@
 <template>
 	<div
-		:class="['card-item-card', { 'item-highlighted': isItemHighlighted }]"
+		:class="['card-item-card', { 'item-highlighted': isItemHighlighted, 'has-thumb': !!item.image }]"
 		data-pos-keyboard-target="item-card"
 		:data-testid="`pos-item-card-${item.item_code}`"
 		:data-item-code="item.item_code"
@@ -238,11 +238,41 @@ const onDragEnd = (event) => {
 }
 
 .card-item-thumb {
-	flex: 0 0 72px;
-	width: 72px;
+	flex: 0 0 52px;
+	width: 52px;
+	height: 52px;
 	align-self: center;
 	margin-left: 8px;
 	border-radius: var(--pos-radius-xs);
+}
+
+.has-thumb .card-item-content {
+	padding: 8px 8px 8px 8px;
+}
+
+.has-thumb .card-item-name {
+	font-size: 0.95rem;
+	line-height: 1.25;
+	-webkit-line-clamp: 3;
+	line-clamp: 3;
+}
+
+.has-thumb .card-item-thumb {
+	width: 44px;
+	flex-basis: 44px;
+	height: 44px;
+}
+
+.has-thumb .primary-price {
+	font-size: 1.1rem;
+}
+
+.has-thumb .card-item-stock {
+	padding: 2px 6px;
+}
+
+.has-thumb .stock-icon {
+	display: none;
 }
 
 .card-item-content {
