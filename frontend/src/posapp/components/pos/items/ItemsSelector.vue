@@ -112,7 +112,6 @@
 					v-if="presentation !== 'counter-grid-dialog'"
 					v-model="item_group"
 					:groups="items_group"
-					:counts="itemGroupCounts"
 				/>
 
 				<v-card flat class="selector-section-card selector-results-card pos-themed-card">
@@ -548,14 +547,6 @@ const usesLimitSearch = computed(() =>
 const { stockSettings: stock_settings_ref } = storeToRefs(uiStore);
 const stock_settings = computed(() => stock_settings_ref.value || {});
 const items_group = computed(() => itemsIntegration.items_group.value || []);
-const itemGroupCounts = computed(() => {
-	const counts = {};
-	for (const item of items.value || []) {
-		const group = item?.item_group;
-		if (group) counts[group] = (counts[group] || 0) + 1;
-	}
-	return counts;
-});
 const offersCount = computed(() => uiStore.offersCount || 0);
 const couponsCount = computed(() => uiStore.couponsCount || 0);
 // selected_currency is now a local ref synced via eventBus
