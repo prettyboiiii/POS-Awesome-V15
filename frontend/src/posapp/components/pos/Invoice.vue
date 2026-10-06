@@ -1574,6 +1574,16 @@ export default {
 			share_last_invoice: this.share_last_invoice,
 			focus_cart_item_qty: this.focusCartItemQty,
 			set_new_line: this.handleSetNewLine,
+			undo_added_qty: ({ rowId, qty }) => {
+				const line = (Array.isArray(this.items) ? this.items : []).find((l) => l.posa_row_id === rowId);
+				if (!line) return;
+				const next = (Number(line.qty) || 0) - qty;
+				if (next <= 0) {
+					this.remove_item(line);
+				} else {
+					this.setFormatedQty(line, "qty", null, false, next);
+				}
+			},
 			calc_uom: this.calc_uom,
 			recalculate_return_discount: (payload) => this.applyReturnDiscountProration(payload),
 			reset_invoice_type_to_invoice: () => {

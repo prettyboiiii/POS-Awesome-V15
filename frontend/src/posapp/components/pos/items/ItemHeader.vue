@@ -70,6 +70,31 @@
 							>
 								×
 							</v-btn>
+							<v-chip
+								v-if="context === 'pos' && priceCheck.active"
+								size="small"
+								color="warning"
+								closable
+								class="price-check-chip"
+								data-testid="price-check-chip"
+								:title="__('Scans show the price and do not add to the cart')"
+								@click:close.stop="priceCheck.turnOff()"
+							>
+								{{ __("Price check") }}
+							</v-chip>
+							<v-btn
+								v-else-if="context === 'pos'"
+								size="small"
+								color="primary"
+								variant="text"
+								class="price-check-btn"
+								data-testid="price-check-btn"
+								:aria-label="__('Price check (F9): scans show the price and do not add to the cart')"
+								:title="__('Price check (F9): scans show the price and do not add to the cart')"
+								@click.stop="priceCheck.toggle()"
+							>
+								{{ __("Price check") }}
+							</v-btn>
 							<v-btn
 								v-if="posProfile.posa_enable_camera_scanning"
 								icon="mdi-camera"
@@ -204,6 +229,7 @@
 
 <script setup>
 import { multiplierFromKey } from "../../../utils/scanMultiplier";
+import { usePriceCheckStore } from "../../../stores/priceCheckStore";
 import { computed, ref } from "vue";
 
 const syncSearchCombobox = (root, state) => {
@@ -278,6 +304,7 @@ const emit = defineEmits([
 	"reload-items",
 ]);
 
+const priceCheck = usePriceCheckStore();
 const debounce_search = ref(null);
 const toolsOpen = ref(false);
 const clampedSyncProgress = computed(() => {
@@ -332,6 +359,11 @@ const handleSearchKeydown = (event) => {
 	}
 	if (event?.key === "Enter") {
 		emit("enter", event);
+		return;
+	}
+	if (props.context === "pos" && event?.key === "F9") {
+		event.preventDefault();
+		priceCheck.toggle();
 		return;
 	}
 	if (props.context === "pos" && event?.key === "*") {

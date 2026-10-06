@@ -310,6 +310,9 @@
 			@scanner-opened="onScannerOpened"
 			@scanner-closed="onScannerClosed"
 		/>
+
+		<PriceCheckBanner v-if="context === 'pos'" />
+		<UndoAddSnackbar v-if="context === 'pos'" @undone="itemsSelectorFocus.focusItemSearch()" />
 	</div>
 </template>
 
@@ -341,6 +344,8 @@ import ItemsSelectorTable from "./ItemsSelectorTable.vue";
 import PharmacyItemSearchTable from "./PharmacyItemSearchTable.vue";
 import NewItemDialog from "./NewItemDialog.vue";
 import ScanErrorDialog from "./ScanErrorDialog.vue";
+import PriceCheckBanner from "./PriceCheckBanner.vue";
+import UndoAddSnackbar from "./UndoAddSnackbar.vue";
 
 import { useResponsive } from "../../../composables/core/useResponsive";
 import { useRtl } from "../../../composables/core/useRtl";
@@ -388,6 +393,8 @@ import { useUIStore } from "../../../stores/uiStore";
 import { handPicks, loadHandPicks } from "../../../utils/handPicks";
 import { useInvoiceStore } from "../../../stores/invoiceStore";
 import { useEmployeeStore } from "../../../stores/employeeStore";
+import { usePriceCheckStore } from "../../../stores/priceCheckStore";
+import { useUndoAddStore } from "../../../stores/undoAddStore";
 
 import { parseBooleanSetting, shouldBlockSaleForStock } from "../../../utils/stock";
 import { shouldFocusCartQtyAfterItemAdd } from "../../../utils/cartFocusSettings";
@@ -434,6 +441,15 @@ const toastStore = useToastStore();
 const uiStore = useUIStore();
 const invoiceStore = useInvoiceStore();
 const employeeStore = useEmployeeStore();
+const priceCheckStore = usePriceCheckStore();
+const undoAddStore = useUndoAddStore();
+// An emptied cart (sale finished, bill cleared) leaves nothing to undo.
+watch(
+	() => invoiceStore.items.length,
+	(count) => {
+		if (count === 0) undoAddStore.clear();
+	},
+);
 const { selectedCustomer } = storeToRefs(customersStore);
 const {
 	posProfile: uiPosProfile,
@@ -1023,6 +1039,17 @@ const add_item = async (item, optionsOrQty: any = {}) => {
 			requestedQty === "" || requestedQty == null ? 1 : Math.abs(parseFloat(requestedQty) || 1);
 
 		item = { ...item };
+		if (priceCheckStore.active) {
+			// Price check: answer "how much?" from the server and leave the cart alone.
+			const res = await (window as any).frappe.call({
+				method: "mart_shop.api.pos.price_check",
+				args: { item_code: item.item_code, company: pos_profile.value?.company },
+			});
+			priceCheckStore.show({ item_code: item.item_code, ...(res?.message || {}) });
+			clearSearch();
+			itemsSelectorFocus.focusItemSearch();
+			return null;
+		}
 		if (parseBooleanSetting(item.retailmind_locked_for_sale)) {
 			toastStore.show({
 				title: __("Item is locked for sale"),
@@ -1092,7 +1119,17 @@ const add_item = async (item, optionsOrQty: any = {}) => {
 
 		if (isValid) {
 			await useItemAddition().prepareItemForCart(item, requestedQty, context);
+			const qtyBefore = new Map<string, number>(
+				invoiceStore.items.map((line: any) => [line.posa_row_id, Number(line.qty) || 0]),
+			);
 			const addedLine = await useItemAddition().addItem(item, context);
+			if (addedLine) {
+				undoAddStore.record({
+					rowId: addedLine.posa_row_id,
+					qty: (Number(addedLine.qty) || 0) - (qtyBefore.get(addedLine.posa_row_id) ?? 0),
+					itemName: addedLine.item_name || addedLine.item_code,
+				});
+			}
 			if (eventBus && typeof eventBus.emit === "function") {
 				eventBus.emit("apply_pricing_rules");
 			}
