@@ -303,6 +303,7 @@ import Returns from "../flows/Returns.vue";
 import MpesaPayments from "../payments/Mpesa-Payments.vue";
 import { inject, ref, onMounted, onBeforeUnmount, computed, watch, nextTick } from "vue";
 import { usePosShift } from "../../../composables/pos/shared/usePosShift";
+import { useFocusGuard } from "../../../composables/pos/items/useFocusGuard";
 import { useOffers } from "../../../composables/pos/shared/useOffers";
 // Import the cache cleanup function
 import { clearExpiredCustomerBalances } from "../../../../offline/index";
@@ -728,7 +729,18 @@ export default {
 			eventBus,
 		});
 
+		// Scanner keystrokes must always land in the search box: take focus back when it drifts to a button or the page.
+		const focusGuard = useFocusGuard({
+			focusSearch: focusItemSearchField,
+			isDialogOpen: () =>
+				dialog.value ||
+				counterGridActive.value ||
+				activeView.value !== "items" ||
+				!!document.querySelector(".v-overlay--active .v-overlay__content"),
+		});
+
 		onMounted(() => {
+			focusGuard.mount();
 			document.addEventListener("keydown", handlePosTabFocus, true);
 			if (typeof window !== "undefined" && "ResizeObserver" in window) {
 				mobileDockObserver = new ResizeObserver(() => {
@@ -756,6 +768,7 @@ export default {
 		});
 
 		onBeforeUnmount(() => {
+			focusGuard.unmount();
 			document.removeEventListener("keydown", handlePosTabFocus, true);
 			if (mobileDockObserver) {
 				mobileDockObserver.disconnect();
