@@ -1124,10 +1124,11 @@ const add_item = async (item, optionsOrQty: any = {}) => {
 			);
 			const addedLine = await useItemAddition().addItem(item, context);
 			if (addedLine) {
+				const line: any = addedLine;
 				undoAddStore.record({
-					rowId: addedLine.posa_row_id,
-					qty: (Number(addedLine.qty) || 0) - (qtyBefore.get(addedLine.posa_row_id) ?? 0),
-					itemName: addedLine.item_name || addedLine.item_code,
+					rowId: line.posa_row_id,
+					qty: (Number(line.qty) || 0) - (qtyBefore.get(line.posa_row_id) ?? 0),
+					itemName: line.item_name || line.item_code,
 				});
 			}
 			if (eventBus && typeof eventBus.emit === "function") {
