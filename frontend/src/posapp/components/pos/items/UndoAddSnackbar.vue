@@ -10,7 +10,7 @@
 		{{ __("Added {0}", [undoAdd.last?.itemName || ""]) }}
 		<template #actions>
 			<v-btn color="warning" variant="text" data-testid="undo-add" @click="undo">
-				{{ __("Undo") }}
+				{{ __("Undo last add") }}
 			</v-btn>
 		</template>
 	</v-snackbar>

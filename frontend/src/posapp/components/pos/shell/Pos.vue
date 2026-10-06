@@ -736,7 +736,7 @@ export default {
 				dialog.value ||
 				counterGridActive.value ||
 				activeView.value !== "items" ||
-				!!document.querySelector(".v-overlay--active .v-overlay__content"),
+				!!document.querySelector(".v-dialog.v-overlay--active, .v-bottom-sheet.v-overlay--active"),
 		});
 
 		onMounted(() => {
