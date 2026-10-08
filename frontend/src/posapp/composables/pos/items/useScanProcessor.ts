@@ -15,6 +15,7 @@ import {
 } from "./scanProcessor/scanAssignment";
 import { splitInlineMultiplier } from "../../../utils/scanMultiplier";
 import { toCompanyCurrency } from "../../../utils/erpnextCurrency";
+import { reportUnknownBarcode } from "../../../utils/unknownBarcode";
 // @ts-ignore
 import placeholderImage from "../../../components/pos/placeholder-image.png";
 
@@ -689,13 +690,14 @@ export function useScanProcessor(context: ScanProcessorContext) {
 
 			// Report Not Found
 			if (context.onItemNotFound) context.onItemNotFound(scannedCode);
+			void reportUnknownBarcode(scannedCode);
 
 			showScanError({
 				message: `${__("Item not found")}: ${scannedCode}`,
 				code: scannedCode,
-				details: __(
+				details: `${__("Reported to backoffice")}. ${__(
 					"Please verify the barcode or check the item's availability.",
-				),
+				)}`,
 			});
 			return;
 		} catch (e: any) {
