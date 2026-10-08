@@ -1,4 +1,6 @@
 import { toCompanyCurrency } from "../../../../utils/erpnextCurrency";
+import { applyTierRate, tierRate } from "../../../../utils/priceTier";
+import { usePriceTierStore } from "../../../../stores/priceTierStore";
 
 declare const __: (_text: string, _args?: any[]) => string;
 declare const frappe: any;
@@ -133,6 +135,16 @@ export function useItemCreation() {
 			if (Array.isArray(context.expanded)) {
 				context.expanded.push(new_item.posa_row_id);
 			}
+		}
+		// Cold mode (or a tap while it is on) charges the cold price; the cashier already chose it, so the
+		// PAY check leaves the line alone. Any other line starts on the shelf price.
+		const tierStore = usePriceTierStore();
+		const tierPrice = tierRate(new_item.item_code, new_item.mart_price_tier, tierStore.prices);
+		if (tierPrice !== null) {
+			applyTierRate(new_item, new_item.mart_price_tier, tierPrice);
+			tierStore.markSeen(new_item.posa_row_id);
+		} else {
+			new_item.mart_price_tier = "";
 		}
 		return new_item;
 	};

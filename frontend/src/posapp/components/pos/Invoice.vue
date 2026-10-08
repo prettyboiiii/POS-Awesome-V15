@@ -195,6 +195,7 @@
 								:removeItem="remove_item"
 								:subtractOne="subtract_one"
 								:addOne="add_one"
+								:setPriceTier="set_price_tier"
 								:toggleOffer="toggleOffer"
 								:changePriceListRate="change_price_list_rate"
 								:isNegative="isNegative"

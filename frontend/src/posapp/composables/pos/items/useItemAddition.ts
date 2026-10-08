@@ -5,6 +5,8 @@ import {
 	shouldBlockSaleForStock,
 } from "../../../utils/stock";
 import { useToastStore } from "../../../stores/toastStore";
+import { usePriceTierStore } from "../../../stores/priceTierStore";
+import { tierRate } from "../../../utils/priceTier";
 import { useStockUtils } from "../shared/useStockUtils";
 
 // Imported composables
@@ -394,6 +396,22 @@ export function useItemAddition() {
 	const addItem = withPerf(
 		"pos:add-item",
 		async function addItemMeasured(item, context) {
+			// Cold mode picks the tier for this add; it is part of the merge key, so a cold Coke and a
+			// shelf Coke become separate lines. Returns, offers and free items stay on retail. A scan brings the
+			// tier it was entered under (`mart_tier_request`), because the cashier may switch cold mode off right
+			// after scanning and the add runs after several server calls; a tap uses the mode as it is now.
+			const tierStore = usePriceTierStore();
+			const requestedTier =
+				context?.isReturnInvoice || item.posa_is_offer || item.is_free_item
+					? ""
+					: (item.mart_tier_request ?? tierStore.scanTier);
+			delete item.mart_tier_request;
+			if (requestedTier) await tierStore.ensureLoaded();
+			item.mart_price_tier =
+				tierRate(item.item_code, requestedTier, tierStore.prices) !== null
+					? requestedTier
+					: "";
+			tierStore.touch();
 			const currentInvoiceType =
 				typeof context?.invoiceType === "string"
 					? context.invoiceType

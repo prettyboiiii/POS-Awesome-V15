@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { createPinia, setActivePinia } from "pinia";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { close_payments, show_payment } from "../src/posapp/components/pos/invoice_utils/dialogs";
@@ -43,6 +44,7 @@ const createPaymentContext = () => ({
 
 describe("invoice payment dialogs", () => {
 	beforeEach(() => {
+		setActivePinia(createPinia());
 		vi.stubGlobal("__", (value: string) => value);
 		vi.stubGlobal("frappe", { call: vi.fn() });
 		Object.defineProperty(window, "innerWidth", {

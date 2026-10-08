@@ -71,6 +71,31 @@
 								×
 							</v-btn>
 							<v-chip
+								v-if="context === 'pos' && priceTier.scanTier === 'cold'"
+								size="small"
+								color="info"
+								closable
+								class="cold-mode-chip"
+								data-testid="cold-mode-chip"
+								:title="__('Cold mode: scans and taps use the cold price')"
+								@click:close.stop="priceTier.setScanTier('')"
+							>
+								{{ __("Cold price") }}
+							</v-chip>
+							<v-btn
+								v-else-if="context === 'pos'"
+								size="small"
+								color="primary"
+								variant="text"
+								class="cold-mode-btn"
+								data-testid="cold-mode-btn"
+								:aria-label="__('Cold mode (F8): scans and taps use the cold price')"
+								:title="__('Cold mode (F8): scans and taps use the cold price')"
+								@click.stop="priceTier.toggleCold()"
+							>
+								{{ __("Cold price") }}
+							</v-btn>
+							<v-chip
 								v-if="context === 'pos' && priceCheck.active"
 								size="small"
 								color="warning"
@@ -230,6 +255,7 @@
 <script setup>
 import { multiplierFromKey } from "../../../utils/scanMultiplier";
 import { usePriceCheckStore } from "../../../stores/priceCheckStore";
+import { usePriceTierStore } from "../../../stores/priceTierStore";
 import { computed, ref } from "vue";
 
 const syncSearchCombobox = (root, state) => {
@@ -305,6 +331,7 @@ const emit = defineEmits([
 ]);
 
 const priceCheck = usePriceCheckStore();
+const priceTier = usePriceTierStore();
 const debounce_search = ref(null);
 const toolsOpen = ref(false);
 const clampedSyncProgress = computed(() => {
@@ -364,6 +391,11 @@ const handleSearchKeydown = (event) => {
 	if (props.context === "pos" && event?.key === "F9") {
 		event.preventDefault();
 		priceCheck.toggle();
+		return;
+	}
+	if (props.context === "pos" && event?.key === "F8") {
+		event.preventDefault();
+		priceTier.toggleCold();
 		return;
 	}
 	if (props.context === "pos" && event?.key === "*") {

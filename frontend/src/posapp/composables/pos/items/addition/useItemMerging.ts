@@ -1,5 +1,7 @@
 import _ from "lodash";
 
+import { mergeTierKey } from "../../../../utils/priceTier";
+
 export function useItemMerging() {
 	type MergeEntry = any;
 	type MergeContext = any;
@@ -12,7 +14,8 @@ export function useItemMerging() {
 
 	const buildMergeKey = (entry: MergeEntry, requireBatch: boolean) => {
 		const batchPart = requireBatch ? entry?.batch_no || "" : "";
-		return `${entry?.item_code || ""}::${entry?.uom || ""}::${batchPart}`;
+		// The price tier keeps a cold Coke and a shelf Coke on separate lines.
+		return `${entry?.item_code || ""}::${entry?.uom || ""}::${batchPart}::${mergeTierKey(entry)}`;
 	};
 
 	const getStoreOrder = (context: MergeContext) => {

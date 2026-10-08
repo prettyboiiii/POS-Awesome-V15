@@ -2,7 +2,8 @@
 
 import { defineComponent, h } from "vue";
 import { mount } from "@vue/test-utils";
-import { describe, expect, it, vi } from "vitest";
+import { createPinia, setActivePinia } from "pinia";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import CartItemRow from "../src/posapp/components/pos/invoice/CartItemRow.vue";
 import { normalizeCartEditQuantity } from "../src/posapp/utils/cartQuantity";
@@ -47,6 +48,11 @@ const VTextFieldStub = defineComponent({
 				},
 			});
 	},
+});
+
+// The row reads the price tier store for its price chip.
+beforeEach(() => {
+	setActivePinia(createPinia());
 });
 
 const mountRow = (

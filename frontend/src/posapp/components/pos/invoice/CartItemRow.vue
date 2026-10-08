@@ -69,6 +69,24 @@
 						</v-chip>
 					</div>
 					<v-chip
+						v-if="showTierChip"
+						size="small"
+						:color="tierChipColor"
+						variant="flat"
+						class="me-1 posa-price-tier-chip"
+						data-testid="cart-tier-chip"
+						:data-tier="item.mart_price_tier || 'retail'"
+						role="button"
+						tabindex="0"
+						:title="__('Price: tap to change between retail, wholesale and cold')"
+						@click.stop="cycleTier"
+						@keydown.enter.stop.prevent="cycleTier"
+						@keydown.space.stop.prevent="cycleTier"
+					>
+						{{ __(tierLabel(item.mart_price_tier || "")) }}
+						<v-icon end size="x-small">mdi-swap-horizontal</v-icon>
+					</v-chip>
+					<v-chip
 						v-if="item.posa_is_offer || item.is_free_item"
 						color="success"
 						size="x-small"
@@ -365,6 +383,7 @@
 						@click.stop="openRateEdit"
 						tabindex="0"
 						data-pos-keyboard-target="cart-rate"
+						data-testid="cart-rate"
 						role="button"
 						:aria-label="__('Edit rate')"
 						:aria-disabled="disableRateEdit ? 'true' : 'false'"
@@ -465,6 +484,8 @@
 
 <script setup>
 import { computed, nextTick, ref, watch } from "vue";
+import { usePriceTierStore } from "../../../stores/priceTierStore";
+import { nextTier, tierLabel, tierRate } from "../../../utils/priceTier";
 import { getCartGridCellId, getCartGridRowId } from "../../../utils/cartFieldFocus";
 import { normalizeCartEditQuantity } from "../../../utils/cartQuantity";
 import { getItemLossRisk, resolveSaleFloorPolicy } from "../../../utils/lossPrevention";
@@ -516,6 +537,7 @@ const emit = defineEmits([
 	"open-name-dialog",
 	"reset-item-name",
 	"add-one",
+	"change-tier",
 	"update-qty",
 	"minus-click",
 	"calc-uom",
@@ -531,6 +553,28 @@ const emit = defineEmits([
 	"open-batch-serial",
 	"remove-item",
 ]);
+
+// Price chip: shown on items that have a cold price (or a line already off the shelf price). Most items
+// have a wholesale price from the old POS, so a chip on every line would only be clutter. Amber while the
+// cold price exists and nobody has looked at the line, so a cashier who keeps scanning still notices it.
+const priceTier = usePriceTierStore();
+const showTierChip = computed(
+	() =>
+		!props.item.posa_is_offer &&
+		!props.item.is_free_item &&
+		(tierRate(props.item.item_code, "cold", priceTier.prices) !== null || Boolean(props.item.mart_price_tier)),
+);
+const tierChipColor = computed(() => {
+	if (props.item.mart_price_tier === "cold") return "info";
+	if (props.item.mart_price_tier === "wholesale") return "success";
+	const unseen =
+		!priceTier.seenRows.has(String(props.item.posa_row_id)) &&
+		tierRate(props.item.item_code, "cold", priceTier.prices) !== null;
+	return unseen ? "warning" : "default";
+});
+const cycleTier = () => {
+	emit("change-tier", props.item, nextTier(props.item.mart_price_tier || "", props.item.item_code, priceTier.prices));
+};
 
 const __ = window.__ || ((text) => text);
 

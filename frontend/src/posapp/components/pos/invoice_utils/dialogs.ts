@@ -6,6 +6,7 @@ import {
 } from "../../../utils/documentSources";
 import { resolvePosDocumentDoctype } from "../../../utils/posDocumentMode";
 import { askMemberBeforePay } from "./beforePay";
+import { askTierBeforePay } from "./tierCheck";
 
 declare const __: (_text: string, _args?: any[]) => string;
 declare const frappe: any;
@@ -35,6 +36,11 @@ export async function show_payment(context: any) {
 				title: __(`Select items to sell`),
 				color: "error",
 			});
+			return;
+		}
+
+		// Cold items still on the shelf price: ask before the member sheet, since a cold price changes the total.
+		if (!(await askTierBeforePay(context))) {
 			return;
 		}
 

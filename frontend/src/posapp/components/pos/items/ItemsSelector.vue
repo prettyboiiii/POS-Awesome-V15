@@ -391,6 +391,7 @@ import { useCustomersStore } from "../../../stores/customersStore";
 import { useToastStore } from "../../../stores/toastStore";
 import { useUIStore } from "../../../stores/uiStore";
 import { handPicks, loadHandPicks } from "../../../utils/handPicks";
+import { usePriceTierStore } from "../../../stores/priceTierStore";
 import { useInvoiceStore } from "../../../stores/invoiceStore";
 import { useEmployeeStore } from "../../../stores/employeeStore";
 import { usePriceCheckStore } from "../../../stores/priceCheckStore";
@@ -1471,15 +1472,24 @@ const handleRemoteStockAdjustment = (payload: unknown) => {
 };
 
 // Frequently used items come from the server (sales lines flagged as tapped); refresh after each sale.
+// Wholesale and cold prices load with them, and cold mode never carries over to the next customer.
+const priceTier = usePriceTierStore();
 watch(
 	() => pos_profile.value?.name,
-	(name) => void loadHandPicks(name),
+	(name) => {
+		void loadHandPicks(name);
+		void priceTier.load();
+	},
 	{ immediate: true },
 );
 watch(
 	() => uiStore.saleComplete,
 	(done) => {
-		if (done) void loadHandPicks(pos_profile.value?.name);
+		if (done) {
+			void loadHandPicks(pos_profile.value?.name);
+			priceTier.setScanTier("");
+			priceTier.clearSeen();
+		}
 	},
 );
 

@@ -14,6 +14,7 @@ import {
 	type ScanAssignment,
 } from "./scanProcessor/scanAssignment";
 import { splitInlineMultiplier } from "../../../utils/scanMultiplier";
+import { usePriceTierStore } from "../../../stores/priceTierStore";
 import { toCompanyCurrency } from "../../../utils/erpnextCurrency";
 import { reportUnknownBarcode } from "../../../utils/unknownBarcode";
 // @ts-ignore
@@ -157,6 +158,8 @@ export function useScanProcessor(context: ScanProcessorContext) {
 
 	type ScanMeta = {
 		isScaleBarcode?: boolean;
+		// Cold mode as it was when the scan was entered; the add happens after several server calls.
+		tier?: string;
 	};
 
 	const addScannedItemToInvoice = async (
@@ -370,6 +373,7 @@ export function useScanProcessor(context: ScanProcessorContext) {
 		awaitingScanResult.value = true;
 
 		try {
+			if (scanMeta.tier !== undefined) newItem.mart_tier_request = scanMeta.tier;
 			// FIXED: Use itemAddition.addItem instead of context.add_item_wrapper
 			await itemAddition.addItem(newItem, {
 				suppressNegativeWarning: true,
@@ -432,6 +436,7 @@ export function useScanProcessor(context: ScanProcessorContext) {
 	};
 
 	const processScannedItem = async (rawScannedCode: string) => {
+		const tierAtScan = usePriceTierStore().scanTier;
 		const inline = splitInlineMultiplier(rawScannedCode);
 		if (inline.qty !== null) context.set_scan_qty?.(inline.qty);
 		const scannedCode = inline.code;
@@ -612,7 +617,7 @@ export function useScanProcessor(context: ScanProcessorContext) {
 				qtyFromBarcode,
 				priceFromBarcode,
 				scanAssignment,
-				{ isScaleBarcode: isScaleBarcodeScan },
+				{ isScaleBarcode: isScaleBarcodeScan, tier: tierAtScan },
 			);
 			return;
 		}
@@ -683,7 +688,7 @@ export function useScanProcessor(context: ScanProcessorContext) {
 					qtyFromBarcode,
 					priceFromBarcode,
 					scanAssignment,
-					{ isScaleBarcode: isScaleBarcodeScan },
+					{ isScaleBarcode: isScaleBarcodeScan, tier: tierAtScan },
 				);
 				return;
 			}

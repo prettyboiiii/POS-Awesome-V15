@@ -44,6 +44,9 @@ import {
 } from "../../../../offline/index";
 import format from "../../../format";
 import { bus } from "../../../bus";
+import { usePriceTierStore } from "../../../stores/priceTierStore";
+import { applyTierRate, restoreRetail, tierRate } from "../../../utils/priceTier";
+import type { PriceTier } from "../../../utils/priceTier";
 
 // @ts-ignore
 const __ = window.__ || ((s) => s);
@@ -440,6 +443,24 @@ export function useInvoiceItems(invoiceType: Ref<string>) {
 		setFormatedQty(item, "qty", null, false, proposed);
 	};
 
+	// The cashier taps the price chip on a line: charge it at another tier. The line is also marked as
+	// looked at, so the PAY check does not ask about it again. Tier is part of the merge key, so later
+	// scans of the same item land on the line with their own tier.
+	const set_price_tier = (item: any, tier: PriceTier) => {
+		if (!item || item.posa_is_offer || item.is_free_item) return;
+		usePriceTierStore().markSeen(item.posa_row_id);
+		if (!tier) {
+			restoreRetail(item);
+		} else {
+			const rate = tierRate(item.item_code, tier, usePriceTierStore().prices);
+			if (rate === null) return;
+			applyTierRate(item, tier, rate);
+		}
+		syncLineAmounts(item);
+		notifyCartLineChanged();
+		bus.emit("apply_pricing_rules");
+	};
+
 	const subtract_one = (item: any) => {
 		const delta = item.qty < 0 ? 1 : -1;
 		const proposed = (item.qty || 0) + delta;
@@ -573,6 +594,7 @@ export function useInvoiceItems(invoiceType: Ref<string>) {
 		saveColumnPreferences,
 		setFormatedQty,
 		add_one,
+		set_price_tier,
 		subtract_one,
 		handleItemDrop,
 		handleItemReorder,

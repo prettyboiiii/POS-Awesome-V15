@@ -1,3 +1,4 @@
+import { createPinia, setActivePinia } from "pinia";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { computed, ref } from "vue";
 
@@ -13,6 +14,7 @@ vi.mock("../src/posapp/stores/toastStore", () => ({
 }));
 
 import { useScanProcessor } from "../src/posapp/composables/pos/items/useScanProcessor";
+import { usePriceTierStore } from "../src/posapp/stores/priceTierStore";
 
 const createScannableItem = (overrides: Record<string, any> = {}) => ({
 	item_code: "ITEM-SCAN",
@@ -102,6 +104,7 @@ const makeContext = (
 
 describe("useScanProcessor serial scan handling", () => {
 	beforeEach(() => {
+		setActivePinia(createPinia());
 		(globalThis as any).__ = (text: string) => text;
 		(globalThis as any).frappe = {
 			call: vi.fn(async ({ method }: { method: string }) => {
@@ -112,6 +115,23 @@ describe("useScanProcessor serial scan handling", () => {
 			}),
 			show_alert: vi.fn(),
 		};
+	});
+
+	it("keeps the price tier a scan was entered under, even if cold mode is switched off before the add", async () => {
+		const ctx = makeContext();
+		ctx.items.value = [{ ...createScannableItem(), item_code: "COKE" }];
+		ctx.barcodeIndex.lookupItemByBarcode = vi.fn(() => ctx.items.value[0]) as any;
+		const tier = usePriceTierStore();
+		tier.setScanTier("cold");
+
+		const { processScannedItem } = useScanProcessor(ctx as any);
+		const pending = processScannedItem("COKE-BARCODE");
+		// The cashier turns cold mode off right after scanning, before the scan has finished.
+		tier.setScanTier("");
+		await pending;
+
+		expect(ctx.itemAddition.addItem).toHaveBeenCalledTimes(1);
+		expect(ctx.itemAddition.addItem.mock.calls[0][0].mart_tier_request).toBe("cold");
 	});
 
 	it("adds item and auto-sets serial when scanned code matches serial_no_data locally", async () => {

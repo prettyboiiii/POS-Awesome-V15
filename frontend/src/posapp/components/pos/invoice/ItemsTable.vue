@@ -73,6 +73,7 @@
 					@qty-edit-submitted="handleQtyEditSubmitted"
 					@minus-click="handleMinusClick"
 					@add-one="addOne"
+					@change-tier="setPriceTier"
 					@calc-uom="calcUom"
 					@update-rate="handleRateUpdate"
 					@rate-edit-submitted="(submittedItem) => handleGridEditorSubmitted(submittedItem, 'rate')"
@@ -225,6 +226,7 @@ interface Props {
 	removeItem: (_item: any) => void;
 	subtractOne: (_item: any) => void;
 	addOne: (_item: any) => void;
+	setPriceTier: (_item: any, _tier: string) => void;
 	isReturnInvoice?: boolean;
 	toggleOffer: (_item: any) => void;
 	changePriceListRate: (_item: any) => void;
