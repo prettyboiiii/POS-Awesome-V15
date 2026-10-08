@@ -412,6 +412,7 @@ export function useItemAddition() {
 					? requestedTier
 					: "";
 			tierStore.touch();
+			let mergedLine: any = null;
 			const currentInvoiceType =
 				typeof context?.invoiceType === "string"
 					? context.invoiceType
@@ -1022,6 +1023,8 @@ export function useItemAddition() {
 				// Trigger background flush
 				if (context.triggerBackgroundFlush)
 					context.triggerBackgroundFlush();
+				// Undo after add needs the line that took the quantity.
+				mergedLine = cur_item;
 			}
 			if (context.forceUpdate) {
 				runAsyncTask(() => context.forceUpdate(), "force_update");
@@ -1030,6 +1033,7 @@ export function useItemAddition() {
 			if (new_item) {
 				handleItemExpansion(new_item, context);
 			}
+			return mergedLine;
 		},
 	);
 
