@@ -23,17 +23,37 @@
 				<v-icon start>{{ isCashLikePayment(payment) ? "mdi-cash" : "mdi-qrcode" }}</v-icon>
 				{{ payment.mode_of_payment }}
 			</v-btn>
-			<v-btn
-				role="radio"
-				:aria-checked="isSplit"
-				:class="['payment-mode-picker__btn', { 'payment-mode-picker__btn--active': isSplit }]"
-				data-test="payment-mode-split"
-				variant="flat"
-				@click="selectedMode = SPLIT"
-			>
-				<v-icon start>mdi-call-split</v-icon>
-				{{ __("Split payment") }}
-			</v-btn>
+			<!-- Split payment is rare, so it sits behind "more"; the button shows it while it is on. -->
+			<v-menu location="bottom end">
+				<template #activator="{ props: menuProps }">
+					<v-btn
+						v-bind="menuProps"
+						:class="[
+							'payment-mode-picker__btn',
+							'payment-mode-picker__more',
+							{ 'payment-mode-picker__btn--active': isSplit },
+						]"
+						data-test="payment-mode-more"
+						:aria-label="__('More payment options')"
+						variant="flat"
+					>
+						<template v-if="isSplit">
+							<v-icon start>mdi-call-split</v-icon>
+							{{ __("Split payment") }}
+						</template>
+						<v-icon v-else>mdi-dots-horizontal</v-icon>
+					</v-btn>
+				</template>
+				<v-list density="comfortable">
+					<v-list-item
+						prepend-icon="mdi-call-split"
+						:title="__('Split payment')"
+						data-test="payment-mode-split"
+						:active="isSplit"
+						@click="selectedMode = SPLIT"
+					/>
+				</v-list>
+			</v-menu>
 		</div>
 		<div
 			v-for="(payment, paymentIndex) in shownPayments"
@@ -360,9 +380,18 @@ const blurTarget = (event) => {
 
 <style scoped>
 .payment-mode-picker {
-	display: grid;
-	grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+	display: flex;
 	gap: var(--pos-space-2);
+}
+
+.payment-mode-picker > .payment-mode-picker__btn:not(.payment-mode-picker__more) {
+	flex: 1 1 0;
+	min-width: 0;
+}
+
+.payment-mode-picker__more {
+	flex: 0 0 auto;
+	min-width: 72px !important;
 }
 
 .payment-mode-picker__btn {
