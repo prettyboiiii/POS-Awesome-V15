@@ -126,7 +126,8 @@
 							"
 							@click="handlePrimaryAction(payment)"
 						>
-							{{ isGiftCardPayment(payment) ? __("Redeem / Scan") : payment.mode_of_payment }}
+							<!-- mart: the card title already names the method; say what the button does. -->
+							{{ isGiftCardPayment(payment) ? __("Redeem / Scan") : __("Pay in full") }}
 						</v-btn>
 					</div>
 				</v-col>
