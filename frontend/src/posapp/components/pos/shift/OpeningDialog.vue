@@ -63,7 +63,7 @@
 
 								<v-data-table
 									:headers="payments_methods_headers"
-									:items="payments_methods"
+									:items="cash_payment_methods"
 									item-key="mode_of_payment"
 									class="enhanced-table-compact"
 									:items-per-page="itemsPerPage"
@@ -133,7 +133,7 @@
 </template>
 
 <script setup>
-import { onMounted, ref, watch } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import {
 	getOpeningDialogStorage,
 	setOpeningDialogStorage,
@@ -208,6 +208,12 @@ watch(company, (val) => {
 	});
 });
 
+// mart: only cash sits in the drawer, so only cash gets an opening amount. Transfers (PromptPay)
+// still go to the server at 0. Rows from an older cache have no type and stay visible.
+const cash_payment_methods = computed(() =>
+	payments_methods.value.filter((row) => !row.type || row.type === "Cash"),
+);
+
 watch(pos_profile, (val) => {
 	payments_methods.value = [];
 	payments_method_data.value.forEach((element) => {
@@ -216,6 +222,7 @@ watch(pos_profile, (val) => {
 				mode_of_payment: element.mode_of_payment,
 				amount: 0,
 				currency: element.currency,
+				type: element.type,
 			});
 		}
 	});
