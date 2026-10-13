@@ -26,11 +26,26 @@
 				</div>
 			</div>
 		</v-col>
-		<v-col cols="12" sm="7" class="payment-summary-grid__paid">
+		<!-- mart: the bill total first, so the cashier sees what to collect before what was received. -->
+		<v-col v-if="!exchangeActive" cols="12" sm="4" class="payment-summary-grid__due">
 			<v-text-field
 				variant="solo"
 				color="primary"
-				:label="exchangeActive ? frappe._('Collected from customer') : frappe._('Paid Amount')"
+				:label="invoice_doc.is_return ? frappe._('Refund Total') : frappe._('Amount Due')"
+				class="sleek-field pos-themed-input"
+				data-testid="payment-due"
+				hide-details
+				:model-value="formatCurrency(invoiceTotal)"
+				readonly
+				:prefix="currencySymbol(invoice_doc.currency)"
+				density="compact"
+			></v-text-field>
+		</v-col>
+		<v-col cols="12" :sm="exchangeActive ? 7 : 4" class="payment-summary-grid__paid">
+			<v-text-field
+				variant="solo"
+				color="primary"
+				:label="exchangeActive ? frappe._('Collected from customer') : frappe._('Amount Received')"
 				class="sleek-field pos-themed-input"
 				hide-details
 				:model-value="total_payments_display"
@@ -40,7 +55,13 @@
 				@click="$emit('show-paid-amount')"
 			></v-text-field>
 		</v-col>
-		<v-col cols="12" sm="5" class="payment-summary-grid__difference" :data-state="settlementState">
+		<v-col
+			cols="12"
+			:sm="exchangeActive ? 5 : 4"
+			class="payment-summary-grid__difference"
+			data-testid="payment-difference"
+			:data-state="settlementState"
+		>
 			<v-text-field
 				variant="solo"
 				color="primary"

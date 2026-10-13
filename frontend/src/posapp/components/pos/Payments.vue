@@ -113,6 +113,7 @@
 							:isMpesaC2bPayment="is_mpesa_c2b_payment"
 							:isGiftCardPayment="isGiftCardPayment"
 							:show-keyboard-shortcuts="counterGridMode"
+							:method-picker="dialogMode"
 							@update-amount="handlePaymentAmountChange"
 							@update-currency="handlePaymentCurrencyChange"
 							@update-rate="handlePaymentRateChange"
@@ -1662,6 +1663,18 @@ const handlePaymentAmountChange = async (payment, event) => {
 	const holder = { value: payment.posa_original_amount ?? payment.amount };
 	setFormatedCurrency(holder, "value", null, false, event);
 	if (!(await updateOriginalAmount(payment, holder.value))) showMissingPaymentRate(payment);
+	// mart: only cash can be over-tendered. A transfer above what is left would mean change from the drawer.
+	if (!isCashLikePayment(payment) && !invoice_doc.value?.is_return && flt(diff_payment.value) < 0) {
+		const capped = Math.max(flt(payment.amount) + flt(diff_payment.value), 0);
+		if (!(await setInvoiceEquivalent(payment, capped))) showMissingPaymentRate(payment);
+		toastStore.show({
+			title: __("{0} must be the exact amount; set to {1}", [
+				payment.mode_of_payment,
+				formatCurrency(capped, invoice_doc.value?.currency),
+			]),
+			color: "warning",
+		});
+	}
 };
 
 const handlePaymentCurrencyChange = async (payment, currency) => {

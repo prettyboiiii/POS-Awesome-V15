@@ -1,7 +1,62 @@
 <template>
 	<div v-if="payments && payments.length" class="payment-methods">
+		<!-- mart: pick the method first (cash is preselected), then the amount. -->
 		<div
-			v-for="(payment, paymentIndex) in payments"
+			v-if="methodPicker && payments.length > 1"
+			class="payment-mode-picker"
+			role="radiogroup"
+			:aria-label="__('Payment Method')"
+		>
+			<v-btn
+				v-for="payment in payments"
+				:key="`mode-${payment.name || payment.mode_of_payment}`"
+				role="radio"
+				:aria-checked="selectedMode === payment.mode_of_payment"
+				:class="[
+					'payment-mode-picker__btn',
+					{ 'payment-mode-picker__btn--active': selectedMode === payment.mode_of_payment },
+				]"
+				:data-test="`payment-mode-${payment.mode_of_payment}`"
+				variant="flat"
+				@click="chooseMode(payment)"
+			>
+				<v-icon start>{{ isCashLikePayment(payment) ? "mdi-cash" : "mdi-qrcode" }}</v-icon>
+				{{ payment.mode_of_payment }}
+			</v-btn>
+			<!-- Split payment is rare, so it sits behind "more"; the button shows it while it is on. -->
+			<v-menu location="bottom end">
+				<template #activator="{ props: menuProps }">
+					<v-btn
+						v-bind="menuProps"
+						:class="[
+							'payment-mode-picker__btn',
+							'payment-mode-picker__more',
+							{ 'payment-mode-picker__btn--active': isSplit },
+						]"
+						data-test="payment-mode-more"
+						:aria-label="__('More payment options')"
+						variant="flat"
+					>
+						<template v-if="isSplit">
+							<v-icon start>mdi-call-split</v-icon>
+							{{ __("Split payment") }}
+						</template>
+						<v-icon v-else>mdi-dots-horizontal</v-icon>
+					</v-btn>
+				</template>
+				<v-list density="comfortable">
+					<v-list-item
+						prepend-icon="mdi-call-split"
+						:title="__('Split payment')"
+						data-test="payment-mode-split"
+						:active="isSplit"
+						@click="selectedMode = SPLIT"
+					/>
+				</v-list>
+			</v-menu>
+		</div>
+		<div
+			v-for="(payment, paymentIndex) in shownPayments"
 			:key="payment.name"
 			class="payment-method-card"
 			:class="{ 'payment-method-card--active': Number(payment.amount || 0) !== 0 }"
@@ -10,7 +65,7 @@
 				showKeyboardShortcuts && paymentIndex < 9 ? paymentIndex + 1 : undefined
 			"
 		>
-			<div class="payment-method-card__header">
+			<div v-if="!singleMode || isReturn" class="payment-method-card__header">
 				<div>
 					<p class="payment-method-card__label">{{ frappe._("Method") }}</p>
 					<h4 class="payment-method-card__title">{{ payment.mode_of_payment }}</h4>
@@ -68,7 +123,11 @@
 						@update:model-value="$emit('update-currency', payment, $event)"
 					></v-select>
 				</v-col>
-				<v-col cols="12" :md="multiCurrencyEnabled ? 4 : 7" v-if="!isMpesaC2bPayment(payment)">
+				<v-col
+					cols="12"
+					:md="singleMode ? 12 : multiCurrencyEnabled ? 4 : 7"
+					v-if="!isMpesaC2bPayment(payment)"
+				>
 					<v-text-field
 						data-pos-keyboard-target="payment-amount"
 						:data-testid="`payment-amount-${payment.mode_of_payment}`"
@@ -85,8 +144,19 @@
 						:prefix="currencySymbol(payment.posa_payment_currency || currency)"
 						@keydown.enter="blurTarget"
 						@keydown.esc="blurTarget"
-						:readonly="isGiftCardPayment(payment)"
+						:readonly="isGiftCardPayment(payment) || isExactTransfer(payment)"
 					></v-text-field>
+					<p
+						v-if="isExactTransfer(payment)"
+						class="payment-method-card__hint"
+						data-test="payment-transfer-hint"
+					>
+						{{
+							__("Ask for a transfer of exactly {0} and check it in the bank app before you confirm.", [
+								`${currencySymbol(payment.posa_payment_currency || currency)}${formatCurrency(payment.amount)}`,
+							])
+						}}
+					</p>
 					<div v-if="multiCurrencyEnabled" class="payment-currency-equivalent">
 						<span v-if="payment._posa_rate_error" class="payment-currency-equivalent--error">
 							{{ __("Exchange rate unavailable") }}
@@ -97,7 +167,7 @@
 						</span>
 					</div>
 				</v-col>
-				<v-col cols="12" :md="multiCurrencyEnabled ? 5 : 5" v-if="!isMpesaC2bPayment(payment)">
+				<v-col cols="12" :md="multiCurrencyEnabled ? 5 : 5" v-if="!isMpesaC2bPayment(payment) && !singleMode">
 					<v-text-field
 						v-if="allowManualRate && payment.posa_payment_currency !== currency"
 						density="compact"
@@ -126,7 +196,8 @@
 							"
 							@click="handlePrimaryAction(payment)"
 						>
-							{{ isGiftCardPayment(payment) ? __("Redeem / Scan") : payment.mode_of_payment }}
+							<!-- mart: the card title already names the method; say what the button does. -->
+							{{ isGiftCardPayment(payment) ? __("Redeem / Scan") : __("Pay in full") }}
 						</v-btn>
 					</div>
 				</v-col>
@@ -197,6 +268,8 @@
 </template>
 
 <script setup>
+import { computed, ref, watch } from "vue";
+
 const frappe = window.frappe;
 const __ = window.__;
 
@@ -223,6 +296,8 @@ const props = defineProps({
 		default: () => false,
 	},
 	showKeyboardShortcuts: Boolean,
+	// mart: show a method picker and only the chosen method's card (or every card for a split payment).
+	methodPicker: Boolean,
 });
 
 const emit = defineEmits([
@@ -237,6 +312,55 @@ const emit = defineEmits([
 	"request-payment",
 	"open-gift-card",
 ]);
+
+const SPLIT = "__split__";
+const selectedMode = ref("");
+const isSplit = computed(() => selectedMode.value === SPLIT);
+const singleMode = computed(() => props.methodPicker && props.payments?.length > 1 && !isSplit.value);
+const shownPayments = computed(() => {
+	if (!singleMode.value) return props.payments || [];
+	const chosen = props.payments.find((p) => p.mode_of_payment === selectedMode.value);
+	return chosen ? [chosen] : props.payments;
+});
+
+// A transfer (PromptPay) is always the exact bill: nothing to type and no change to give.
+const isExactTransfer = (payment) =>
+	singleMode.value && !props.isCashLikePayment(payment) && !props.isGiftCardPayment(payment);
+
+const paidRows = () => (props.payments || []).filter((p) => Number(p.amount || 0) !== 0);
+
+const initialMode = () => {
+	const paid = paidRows();
+	if (paid.length > 1) return SPLIT;
+	if (paid.length === 1) return paid[0].mode_of_payment;
+	const preferred = (props.payments || []).find((p) => p.default === 1) || props.payments?.[0];
+	return preferred?.mode_of_payment || "";
+};
+
+const chooseMode = (payment) => {
+	selectedMode.value = payment.mode_of_payment;
+	emit("set-full-amount", payment, props.isReturn);
+};
+
+// A new invoice starts from its own amounts (the default method is already filled in).
+watch(
+	() => props.payments,
+	() => {
+		selectedMode.value = initialMode();
+	},
+	{ immediate: true },
+);
+
+// Keep the picker in step when amounts move from elsewhere (keyboard shortcuts, a reloaded draft).
+watch(
+	() => (props.payments || []).map((p) => Number(p.amount || 0)).join("|"),
+	() => {
+		if (!props.methodPicker || isSplit.value) return;
+		const paid = paidRows();
+		if (paid.length > 1) selectedMode.value = SPLIT;
+		else if (paid.length === 1) selectedMode.value = paid[0].mode_of_payment;
+	},
+);
 
 const remainderLockTitle = (payment) =>
 	payment?._posa_remainder_locked ? __("Unlock automatic remainder") : __("Lock automatic remainder");
@@ -255,6 +379,46 @@ const blurTarget = (event) => {
 </script>
 
 <style scoped>
+.payment-mode-picker {
+	display: flex;
+	gap: var(--pos-space-2);
+}
+
+.payment-mode-picker > .payment-mode-picker__btn:not(.payment-mode-picker__more) {
+	flex: 1 1 0;
+	min-width: 0;
+}
+
+.payment-mode-picker__more {
+	flex: 0 0 auto;
+	min-width: 72px !important;
+}
+
+.payment-mode-picker__btn {
+	min-height: 64px !important;
+	border: 2px solid var(--pos-border) !important;
+	border-radius: var(--pos-radius-sm) !important;
+	background: var(--pos-surface-raised) !important;
+	color: var(--pos-text-primary) !important;
+	font-size: 1.15rem;
+	font-weight: 700;
+	text-transform: none;
+	letter-spacing: 0;
+}
+
+.payment-mode-picker__btn--active {
+	border-color: var(--pos-primary) !important;
+	background: var(--pos-primary-container) !important;
+	color: var(--pos-primary-variant) !important;
+	box-shadow: 0 0 0 2px color-mix(in srgb, var(--pos-primary) 35%, transparent);
+}
+
+.payment-method-card__hint {
+	margin: 8px 4px 0;
+	font-size: 0.95rem;
+	color: var(--pos-text-secondary);
+}
+
 .payment-methods {
 	display: flex;
 	flex-direction: column;

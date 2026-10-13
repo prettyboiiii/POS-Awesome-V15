@@ -52,6 +52,8 @@ def get_opening_dialog_data():
     # set currency from pos profile
     for mode in data["payments_method"]:
         mode["currency"] = frappe.get_cached_value("POS Profile", mode["parent"], "currency")
+        # mart: the opening dialog asks for a float only on cash methods.
+        mode["type"] = frappe.get_cached_value("Mode of Payment", mode["mode_of_payment"], "type")
 
     return data
 
