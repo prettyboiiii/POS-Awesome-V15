@@ -14,6 +14,7 @@ import {
 	type ScanAssignment,
 } from "./scanProcessor/scanAssignment";
 import { splitInlineMultiplier } from "../../../utils/scanMultiplier";
+import { hasThai, thaiToLatin } from "../../../utils/thaiKeyMap";
 import { usePriceTierStore } from "../../../stores/priceTierStore";
 import { toCompanyCurrency } from "../../../utils/erpnextCurrency";
 import { reportUnknownBarcode } from "../../../utils/unknownBarcode";
@@ -437,6 +438,11 @@ export function useScanProcessor(context: ScanProcessorContext) {
 
 	const processScannedItem = async (rawScannedCode: string) => {
 		const tierAtScan = usePriceTierStore().scanTier;
+		// Scanner typed while the OS layout is Thai: read it as the Latin keys it meant, unless the Thai text
+		// itself is a known code.
+		if (hasThai(rawScannedCode) && !barcodeIndex.lookupItemByBarcode(rawScannedCode)) {
+			rawScannedCode = thaiToLatin(rawScannedCode);
+		}
 		const inline = splitInlineMultiplier(rawScannedCode);
 		if (inline.qty !== null) context.set_scan_qty?.(inline.qty);
 		const scannedCode = inline.code;
