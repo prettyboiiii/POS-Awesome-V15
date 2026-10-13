@@ -1,4 +1,5 @@
 import _ from "lodash";
+import { hasThai, thaiToLatin } from "../../../utils/thaiKeyMap";
 import { shouldReloadOnSearchClear } from "../../../utils/searchUtils.js";
 import { isOffline } from "../../../../offline/index";
 import { resolveBooleanSetting } from "./selectorSearch/resolveBooleanSetting";
@@ -299,7 +300,17 @@ export const useItemsSelectorSearch = ({
 
 		// Prefer the visible input value so Enter uses the latest typed text.
 		const rawQuery = getCurrentSearchInput(vm);
-		const trimmedQuery = String(rawQuery || "").trim();
+		let trimmedQuery = String(rawQuery || "").trim();
+
+		// A scanner typed while the OS layout is Thai: when the Latin keys it meant are a known barcode, use them.
+		if (
+			typeof resolveItemByBarcode === "function" &&
+			hasThai(trimmedQuery) &&
+			!resolveItemByBarcode(trimmedQuery)
+		) {
+			const latin = thaiToLatin(trimmedQuery);
+			if (resolveItemByBarcode(latin)) trimmedQuery = latin;
+		}
 
 		// Keep both search refs aligned with the value we are about to process.
 		vm.first_search = trimmedQuery;
