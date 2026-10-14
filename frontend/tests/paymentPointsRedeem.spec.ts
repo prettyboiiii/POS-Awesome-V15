@@ -57,6 +57,40 @@ describe("PaymentPointsRedeem", () => {
 		expect(onSmall).toHaveBeenLastCalledWith(60);
 	});
 
+	it("with points already used, use all and typing never exceed the bill", async () => {
+		// 20 THB bill with 60 points (15 THB) already redeemed. The bill total does not include the
+		// redemption, so the cap is the bill: 20 THB (80 points), not 20 + 15.
+		const onSetAmount = vi.fn();
+		const wrapper = mount(PaymentPointsRedeem, {
+			props: {
+				...baseProps,
+				loyaltyAmount: 15,
+				onSetAmount,
+				invoiceDoc: { ...baseProps.invoiceDoc, grand_total: 20, rounded_total: 20 },
+			},
+		});
+		await wrapper.get('[data-testid="points-redeem-all"]').trigger("click");
+		expect(onSetAmount).toHaveBeenLastCalledWith(20);
+		const input = wrapper.get('[data-testid="points-redeem-input"]');
+		(input.element as HTMLInputElement).value = "140";
+		await input.trigger("change");
+		expect(onSetAmount).toHaveBeenLastCalledWith(20);
+	});
+
+	it("leaves out what stored credit already covers", async () => {
+		const onSetAmount = vi.fn();
+		const wrapper = mount(PaymentPointsRedeem, {
+			props: {
+				...baseProps,
+				onSetAmount,
+				otherCoveredAmount: 15,
+				invoiceDoc: { ...baseProps.invoiceDoc, grand_total: 60, rounded_total: 60 },
+			},
+		});
+		await wrapper.get('[data-testid="points-redeem-all"]').trigger("click");
+		expect(onSetAmount).toHaveBeenLastCalledWith(45);
+	});
+
 	it("typed points become baht and are capped", async () => {
 		const onSetAmount = vi.fn();
 		const wrapper = mount(PaymentPointsRedeem, { props: { ...baseProps, onSetAmount } });
@@ -82,5 +116,13 @@ describe("PaymentPointsRedeem", () => {
 		const loyalty = paymentsSource.indexOf("<PaymentPointsRedeem");
 		expect(loyalty).toBeGreaterThan(-1);
 		expect(adjustments).toBeGreaterThan(loyalty);
+	});
+
+	it("switching to pay-later clears the redemption", () => {
+		const start = paymentsSource.indexOf("watch(is_credit_sale");
+		expect(start).toBeGreaterThan(-1);
+		const body = paymentsSource.slice(start, start + 700);
+		expect(body).toContain("clearLoyaltyRedemption(doc)");
+		expect(body).toContain("loyalty_amount.value = 0");
 	});
 });

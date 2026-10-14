@@ -51,7 +51,7 @@
 
 <script setup>
 import { computed } from "vue";
-import { amountForPoints, maxRedeemablePoints, pointsFromInput } from "../../../utils/pointsRedeem";
+import { amountForPoints, maxRedeemablePoints, pointsFromInput, pointsUsed } from "../../../utils/pointsRedeem";
 
 // mart: the one piece of ERPNext's loyalty redemption the shop's simplified pay dialog keeps.
 // The full PaymentRedemption block (baht field) stays hidden; this one speaks points.
@@ -61,30 +61,40 @@ const props = defineProps({
 	loyaltyAmount: { type: Number, default: 0 },
 	formatCurrency: { type: Function, required: true },
 	currencySymbol: { type: Function, required: true },
+	// baht of the bill already covered by something else (stored credit); exchange credit is read from the doc
+	otherCoveredAmount: { type: Number, default: 0 },
 	disabled: { type: Boolean, default: false },
 });
 
 const emit = defineEmits(["set-amount"]);
 
-const __ = (text, args) => (window.frappe?._ ? window.frappe._(text, args) : text);
+const __ = window.__ || ((text, args) => (window.frappe?._ ? window.frappe._(text, args) : text));
 
 const info = computed(() => (props.customerInfo && typeof props.customerInfo === "object" ? props.customerInfo : {}));
 const points = computed(() => Math.floor(Number(info.value.loyalty_points || 0)) || 0);
 const factor = computed(() => Number(info.value.conversion_factor || 1) || 1);
 const availableAmount = computed(() => amountForPoints(points.value, factor.value));
-const invoiceTotal = computed(() =>
-	Number(props.invoiceDoc?.rounded_total || props.invoiceDoc?.grand_total || 0),
-);
-// the bill total before points: loyalty_amount is already inside grand_total only after a recalculation, so
-// the cap uses total plus what is currently redeemed.
+// grand_total / rounded_total do not include the points already used, so they are not added back here.
+const invoiceTotal = computed(() => {
+	const doc = props.invoiceDoc || {};
+	const total = Number(doc.rounded_total || doc.grand_total || 0);
+	const exchange = Math.max(Number(doc.posa_exchange_credit || 0), 0);
+	return Math.max(total - exchange - Math.max(Number(props.otherCoveredAmount || 0), 0), 0);
+});
 const maxPoints = computed(() =>
 	maxRedeemablePoints({
 		points: points.value,
 		conversionFactor: factor.value,
-		invoiceTotal: invoiceTotal.value + Number(props.loyaltyAmount || 0),
+		invoiceTotal: invoiceTotal.value,
 	}),
 );
-const usedPoints = computed(() => Math.round(Number(props.loyaltyAmount || 0) / factor.value));
+const usedPoints = computed(() =>
+	pointsUsed({
+		loyaltyAmount: Number(props.loyaltyAmount || 0),
+		conversionFactor: factor.value,
+		savedPoints: Number(props.invoiceDoc?.loyalty_points || 0),
+	}),
+);
 const visible = computed(
 	() => Boolean(props.invoiceDoc) && !props.invoiceDoc.is_return && !props.disabled && points.value > 0,
 );

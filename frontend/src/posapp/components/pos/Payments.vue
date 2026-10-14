@@ -53,7 +53,9 @@
 							:diff_payment_display="diff_payment_display"
 							:diff_label="diff_label"
 							:diff-payment="diff_payment"
-							:redeemed-amount="Number(invoice_doc.loyalty_amount || loyalty_amount || 0)"
+							:redeemed-amount="
+								Number(invoice_doc.loyalty_amount || loyalty_amount || 0) + Number(redeemed_customer_credit || 0)
+							"
 							:change_due="change_due"
 							:base-settlement="base_settlement"
 							:base-currency="companyCurrency"
@@ -97,6 +99,7 @@
 							:invoice-doc="invoice_doc"
 							:customer-info="customer_info"
 							:loyalty-amount="Number(loyalty_amount || 0)"
+							:other-covered-amount="Number(redeemed_customer_credit || 0)"
 							:format-currency="formatCurrency"
 							:currency-symbol="currencySymbol"
 							@set-amount="handlePointsAmount"
@@ -430,6 +433,7 @@ import PaymentMethods from "./payments/PaymentMethods.vue";
 import PaymentGiftCardSection from "./payments/PaymentGiftCardSection.vue";
 import PaymentRedemption from "./payments/PaymentRedemption.vue";
 import PaymentPointsRedeem from "./payments/PaymentPointsRedeem.vue";
+import { clearLoyaltyRedemption } from "../../utils/pointsRedeem";
 import PaymentAdditionalInfo from "./payments/PaymentAdditionalInfo.vue";
 import PaymentPurchaseOrder from "./payments/PaymentPurchaseOrder.vue";
 import PaymentCustomerCreditDetails from "./payments/PaymentCustomerCreditDetails.vue";
@@ -2289,6 +2293,12 @@ watch(is_credit_sale, (newVal) => {
 
 	// Always clear all payment methods first to prevent stale paid amounts.
 	clear_all_amounts();
+
+	// mart: a pay-later bill carries no points redemption.
+	if (newVal) {
+		loyalty_amount.value = 0;
+		clearLoyaltyRedemption(doc);
+	}
 
 	if (!newVal && doc.payments.length) {
 		const amount = flt(doc.rounded_total || doc.grand_total, currency_precision.value);

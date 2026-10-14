@@ -5,6 +5,8 @@ import {
 	maxRedeemablePoints,
 	pointsFromInput,
 	amountDueAfterRedeem,
+	clearLoyaltyRedemption,
+	pointsUsed,
 } from "../src/posapp/utils/pointsRedeem";
 
 describe("pointsRedeem", () => {
@@ -44,5 +46,22 @@ describe("pointsRedeem", () => {
 		expect(amountDueAfterRedeem(250, 100)).toBe(150);
 		expect(amountDueAfterRedeem(250, 0)).toBe(250);
 		expect(amountDueAfterRedeem(50, 100)).toBe(0);
+	});
+
+	it("clears every loyalty field of a bill (pay-later carries no redemption)", () => {
+		const doc: any = { loyalty_amount: 15, redeem_loyalty_points: 1, loyalty_points: 60, grand_total: 20 };
+		clearLoyaltyRedemption(doc);
+		expect(doc.loyalty_amount).toBe(0);
+		expect(doc.redeem_loyalty_points).toBe(0);
+		expect(doc.loyalty_points).toBe(0);
+		expect(doc.grand_total).toBe(20);
+		expect(() => clearLoyaltyRedemption(null)).not.toThrow();
+	});
+
+	it("counts used points with one rule, preferring the saved loyalty_points", () => {
+		expect(pointsUsed({ loyaltyAmount: 15, conversionFactor: 0.25 })).toBe(60);
+		expect(pointsUsed({ loyaltyAmount: 15, conversionFactor: 0.25, savedPoints: 60 })).toBe(60);
+		expect(pointsUsed({ loyaltyAmount: 0, conversionFactor: 0.25, savedPoints: 60 })).toBe(0);
+		expect(pointsUsed({ loyaltyAmount: 0.75, conversionFactor: 0.25 })).toBe(3);
 	});
 });
