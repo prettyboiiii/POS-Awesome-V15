@@ -3,7 +3,7 @@
 		<div class="points-redeem__info">
 			<v-icon icon="mdi-star-circle-outline" size="22" class="points-redeem__icon" />
 			<div class="points-redeem__text">
-				<strong class="points-redeem__title">{{ __("Use points") }}</strong>
+				<strong class="points-redeem__title">{{ __("Use points on this bill") }}</strong>
 				<span class="points-redeem__have" data-testid="points-redeem-have">{{
 					__("{0} points (worth {1})", [points, money(availableAmount)])
 				}}</span>
@@ -34,7 +34,7 @@
 				:disabled="maxPoints <= 0 || usedPoints === maxPoints"
 				@click="useAll"
 			>
-				{{ __("Use all") }}
+				{{ __("Use all points") }}
 			</button>
 			<button
 				v-if="usedPoints > 0"
@@ -43,7 +43,7 @@
 				data-testid="points-redeem-clear"
 				@click="clear"
 			>
-				{{ __("Do not use") }}
+				{{ __("Do not use points") }}
 			</button>
 		</div>
 	</div>
