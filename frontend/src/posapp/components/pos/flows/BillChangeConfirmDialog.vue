@@ -6,7 +6,8 @@
 		persistent
 		@update:model-value="$emit('update:modelValue', $event)"
 	>
-		<v-card data-testid="bill-change-confirm">
+		<!-- persistent stops a click outside from closing it; Esc still goes back (.stop keeps it from the edit dialog). -->
+		<v-card data-testid="bill-change-confirm" @keydown.esc.stop="$emit('cancel')">
 			<v-card-title class="text-wrap">{{ __("Change a paid bill") }}</v-card-title>
 			<v-card-text>
 				<p class="mb-4">
@@ -25,15 +26,19 @@
 					:rules="[() => canConfirm || __('Reason is required')]"
 					@keydown.ctrl.enter="confirm"
 				/>
+				<p class="text-caption text-medium-emphasis" data-testid="bill-change-hint">
+					{{ __("Ctrl+Enter confirms. Esc goes back.") }}
+				</p>
 			</v-card-text>
 			<v-card-actions>
 				<v-spacer />
-				<v-btn variant="text" data-testid="bill-change-back" @click="$emit('cancel')">
+				<v-btn variant="text" size="large" data-testid="bill-change-back" @click="$emit('cancel')">
 					{{ __("Do not change") }}
 				</v-btn>
 				<v-btn
 					color="primary"
 					variant="flat"
+					size="large"
 					data-testid="bill-change-confirm-submit"
 					:disabled="!canConfirm"
 					@click="confirm"
