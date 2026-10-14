@@ -1656,6 +1656,7 @@
 						class="edit-key-field"
 						data-edit-nav="discount_amount"
 						data-testid="invoice-edit-discount-amount"
+						:disabled="!editCanChangeBillDiscount()"
 						:label="__('Invoice Discount')"
 						@update:model-value="scheduleEditPreview()"
 					/>
@@ -1668,6 +1669,7 @@
 						class="edit-key-field"
 						data-edit-nav="additional_discount_percentage"
 						data-testid="invoice-edit-additional-discount-percentage"
+						:disabled="!editCanChangeBillDiscount()"
 						:label="__('Additional Discount %')"
 						@update:model-value="scheduleEditPreview()"
 					/>
@@ -1717,6 +1719,7 @@
 									class="edit-number-input edit-key-field"
 									:data-edit-nav="`item-${index}-rate`"
 									:data-testid="`invoice-edit-item-${index}-rate`"
+									:disabled="!editCanChangeRate()"
 									:data-edit-row="index"
 									data-edit-col="rate"
 									data-edit-section="items"
@@ -1733,6 +1736,7 @@
 									class="edit-number-input edit-key-field"
 									:data-edit-nav="`item-${index}-discount_percentage`"
 									:data-testid="`invoice-edit-item-${index}-discount-percentage`"
+									:disabled="!editCanChangeItemDiscount()"
 									:data-edit-row="index"
 									data-edit-col="discount_percentage"
 									data-edit-section="items"
@@ -1749,6 +1753,7 @@
 									class="edit-number-input edit-key-field"
 									:data-edit-nav="`item-${index}-discount_amount`"
 									:data-testid="`invoice-edit-item-${index}-discount-amount`"
+									:disabled="!editCanChangeItemDiscount()"
 									:data-edit-row="index"
 									data-edit-col="discount_amount"
 									data-edit-section="items"
@@ -1804,6 +1809,7 @@
 						hide-details
 						class="edit-key-field"
 						data-edit-nav="new-item-rate"
+						:disabled="!editCanChangeRate()"
 						data-edit-section="new-item"
 						:label="__('Rate')"
 					/>
@@ -1888,6 +1894,12 @@
 			</v-card-actions>
 		</v-card>
 	</v-dialog>
+	<BillChangeConfirmDialog
+		v-model="editConfirmDialog"
+		:invoice-name="editInvoiceDoc?.name || ''"
+		@confirm="confirmEditInvoice"
+		@cancel="editConfirmDialog = false"
+	/>
 </template>
 
 <script>
@@ -1918,6 +1930,14 @@ import { isOffline } from "../../../../offline/index";
 import { buildInvoicePdfUrl, shouldDownloadPdfForShareError } from "../../../utils/invoiceSharing";
 import DateRangeFilter from "../shared/DateRangeFilter.vue";
 import DocumentSourceSelector from "../shared/DocumentSourceSelector.vue";
+import BillChangeConfirmDialog from "./BillChangeConfirmDialog.vue";
+import {
+	canChangePaidBill,
+	canEditBillDiscount,
+	canEditBillItemDiscount,
+	canEditBillRate,
+	cleanBillReason,
+} from "../../../utils/billEdit";
 import {
 	canDeleteDocumentSourceRecord,
 	commitDocumentFlowAction,
@@ -1937,6 +1957,7 @@ const TAB_PAGE_SIZE = 25;
 export default {
 	mixins: [format],
 	components: {
+		BillChangeConfirmDialog,
 		DateRangeFilter,
 		DocumentSourceSelector,
 	},
@@ -2033,6 +2054,7 @@ export default {
 		detailDialog: false,
 		selectedInvoiceDetail: null,
 		editDialog: false,
+		editConfirmDialog: false,
 		editLoading: false,
 		editSubmitting: false,
 		editPreviewLoading: false,
@@ -2757,7 +2779,17 @@ export default {
 			return count > 0 ? __("Modified x{0}", [count]) : "";
 		},
 		canEditSubmittedInvoice(invoice) {
-			return Boolean(invoice?.can_edit_submitted_invoice);
+			// The server also refuses a cashier (mart_shop.api.posa_bill_edits, issue #96).
+			return Boolean(invoice?.can_edit_submitted_invoice) && canChangePaidBill(this.currentCashier);
+		},
+		editCanChangeRate() {
+			return canEditBillRate(this.posProfile, this.currentCashier);
+		},
+		editCanChangeItemDiscount() {
+			return canEditBillItemDiscount(this.posProfile, this.currentCashier);
+		},
+		editCanChangeBillDiscount() {
+			return canEditBillDiscount(this.posProfile, this.currentCashier);
 		},
 		sortInvoicesByLatest(items) {
 			return [...items].sort(
@@ -3516,7 +3548,7 @@ export default {
 			}
 		},
 		handleEditModalKeydown(event) {
-			if (!this.editDialog || this.editLoading) return;
+			if (!this.editDialog || this.editLoading || this.editConfirmDialog) return;
 			if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
 				event.preventDefault();
 				this.submitEditInvoice();
@@ -3732,13 +3764,13 @@ export default {
 				});
 				return;
 			}
-			if (
-				!window.confirm(
-					__("Cancel {0} and submit a corrected amendment?", [this.editInvoiceDoc.name]),
-				)
-			) {
-				return;
-			}
+			// Ask for the reason in our own dialog (issue #96); it calls confirmEditInvoice.
+			this.editConfirmDialog = true;
+		},
+		async confirmEditInvoice(reasonText) {
+			const reason = cleanBillReason(reasonText);
+			if (!reason || !this.editInvoiceDoc?.name || this.editSubmitting) return;
+			this.editConfirmDialog = false;
 			this.editSubmitting = true;
 			this.editError = "";
 			try {
@@ -3761,6 +3793,7 @@ export default {
 						...this.editScopeArgs(this.editInvoiceDoc),
 						correction_data: JSON.stringify(this.buildEditCorrectionData()),
 						client_request_id: clientRequestId,
+						reason,
 					},
 					freeze: true,
 					freeze_message: __("Submitting corrected invoice"),
