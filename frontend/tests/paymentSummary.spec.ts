@@ -39,6 +39,31 @@ describe("PaymentSummary", () => {
 		(window as any).frappe = { _: (value: string) => value };
 	});
 
+	it("takes redeemed loyalty points off the amount due tile", () => {
+		const mountDue = (redeemedAmount?: number) =>
+			mount(PaymentSummary, {
+				props: {
+					invoice_doc: { currency: "THB", is_return: false, grand_total: 250, rounded_total: 250 },
+					total_payments_display: "0",
+					diff_payment_display: "150",
+					diff_label: "Remaining",
+					diffPayment: 150,
+					change_due: 0,
+					paid_change: 0,
+					credit_change: 0,
+					paid_change_rules: [],
+					currencySymbol: () => "฿",
+					formatCurrency: (value: number) => String(value),
+					...(redeemedAmount === undefined ? {} : { redeemedAmount }),
+				},
+				global: { components: { VRow: BoxStub, VCol: BoxStub, VTextField: VTextFieldStub } },
+			});
+
+		expect(mountDue().get('[data-testid="payment-due"]').text()).toBe("250");
+		expect(mountDue(100).get('[data-testid="payment-due"]').text()).toBe("150");
+		expect(mountDue(400).get('[data-testid="payment-due"]').text()).toBe("0");
+	});
+
 	it("does not show the settlement state box when there is still a remaining balance", () => {
 		const wrapper = mount(PaymentSummary, {
 			props: {

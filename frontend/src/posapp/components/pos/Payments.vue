@@ -53,6 +53,7 @@
 							:diff_payment_display="diff_payment_display"
 							:diff_label="diff_label"
 							:diff-payment="diff_payment"
+							:redeemed-amount="Number(invoice_doc.loyalty_amount || loyalty_amount || 0)"
 							:change_due="change_due"
 							:base-settlement="base_settlement"
 							:base-currency="companyCurrency"
@@ -83,6 +84,22 @@
 							@remove-row="removeChangeReturnRow"
 							@update-amount="handleChangeReturnAmount"
 							@update-currency="handleChangeReturnCurrency"
+						/>
+					</section>
+
+					<!-- mart: the cashier screen hides the adjustments section, so points get a section of their own. -->
+					<section
+						v-if="showPointsRedeem"
+						class="payment-section payment-section--points"
+						data-testid="payment-points-section"
+					>
+						<PaymentPointsRedeem
+							:invoice-doc="invoice_doc"
+							:customer-info="customer_info"
+							:loyalty-amount="Number(loyalty_amount || 0)"
+							:format-currency="formatCurrency"
+							:currency-symbol="currencySymbol"
+							@set-amount="handlePointsAmount"
 						/>
 					</section>
 
@@ -412,6 +429,7 @@ import PaymentActionButtons from "./payments/PaymentActionButtons.vue";
 import PaymentMethods from "./payments/PaymentMethods.vue";
 import PaymentGiftCardSection from "./payments/PaymentGiftCardSection.vue";
 import PaymentRedemption from "./payments/PaymentRedemption.vue";
+import PaymentPointsRedeem from "./payments/PaymentPointsRedeem.vue";
 import PaymentAdditionalInfo from "./payments/PaymentAdditionalInfo.vue";
 import PaymentPurchaseOrder from "./payments/PaymentPurchaseOrder.vue";
 import PaymentCustomerCreditDetails from "./payments/PaymentCustomerCreditDetails.vue";
@@ -1613,6 +1631,20 @@ const handleWriteOffAmountUpdate = (value) => {
 	}
 
 	invoice_doc.value.write_off_amount = nextAmount;
+};
+
+// mart: the points line sets the baht amount; the loyalty_amount watcher fills redeem_loyalty_points,
+// loyalty_points and re-balances the cash line.
+const showPointsRedeem = computed(
+	() =>
+		Boolean(invoice_doc.value) &&
+		!invoice_doc.value.is_return &&
+		!is_credit_sale.value &&
+		Number(customer_info.value?.loyalty_points || 0) > 0,
+);
+
+const handlePointsAmount = (amount) => {
+	loyalty_amount.value = flt(amount, currency_precision.value);
 };
 
 const handleRedemptionFormattedCurrency = (data) => {

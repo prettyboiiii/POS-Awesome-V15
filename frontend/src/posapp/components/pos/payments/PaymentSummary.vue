@@ -35,7 +35,7 @@
 				class="sleek-field pos-themed-input"
 				data-testid="payment-due"
 				hide-details
-				:model-value="formatCurrency(invoiceTotal)"
+				:model-value="formatCurrency(amountDue)"
 				readonly
 				:prefix="currencySymbol(invoice_doc.currency)"
 				density="compact"
@@ -148,6 +148,7 @@
 
 <script setup>
 import { computed } from "vue";
+import { amountDueAfterRedeem } from "../../../utils/pointsRedeem";
 
 const props = defineProps({
 	invoice_doc: Object,
@@ -187,6 +188,11 @@ const props = defineProps({
 		type: String,
 		default: "",
 	},
+	// mart: baht already covered by loyalty points; the amount due tile shows the bill less this.
+	redeemedAmount: {
+		type: Number,
+		default: 0,
+	},
 });
 
 defineEmits(["show-paid-amount", "show-diff-payment", "show-paid-change", "update-credit-change"]);
@@ -195,6 +201,12 @@ const frappe = window.frappe;
 
 const invoiceTotal = computed(() =>
 	Math.abs(Number(props.invoice_doc?.rounded_total || props.invoice_doc?.grand_total || 0)),
+);
+
+const amountDue = computed(() =>
+	props.invoice_doc?.is_return
+		? invoiceTotal.value
+		: amountDueAfterRedeem(invoiceTotal.value, props.redeemedAmount),
 );
 
 const baseSettlementState = computed(() => {
