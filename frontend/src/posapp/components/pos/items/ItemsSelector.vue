@@ -312,6 +312,7 @@
 		/>
 
 		<PriceCheckBanner v-if="context === 'pos'" />
+		<ScanNoticeSnackbar v-if="context === 'pos'" />
 		<UndoAddSnackbar v-if="context === 'pos'" @undone="itemsSelectorFocus.focusItemSearch()" />
 	</div>
 </template>
@@ -346,6 +347,7 @@ import NewItemDialog from "./NewItemDialog.vue";
 import ScanErrorDialog from "./ScanErrorDialog.vue";
 import PriceCheckBanner from "./PriceCheckBanner.vue";
 import UndoAddSnackbar from "./UndoAddSnackbar.vue";
+import ScanNoticeSnackbar from "./ScanNoticeSnackbar.vue";
 
 import { useResponsive } from "../../../composables/core/useResponsive";
 import { useRtl } from "../../../composables/core/useRtl";

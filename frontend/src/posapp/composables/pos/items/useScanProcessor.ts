@@ -1,5 +1,6 @@
 import { ref, type Ref, type ComputedRef } from "vue";
 import { useToastStore } from "../../../stores/toastStore";
+import { useScanNoticeStore } from "../../../stores/scanNoticeStore";
 import { perfMarkStart, perfMarkEnd } from "../../../utils/perf";
 import {
 	formatStockShortageError,
@@ -140,6 +141,18 @@ export function useScanProcessor(context: ScanProcessorContext) {
 			if (typeof scannerInput.playScanTone === "function") {
 				scannerInput.playScanTone("error");
 			}
+		}
+	};
+
+	// Not found / lookup failed: a snackbar, never the blocking dialog.
+	const showScanNotice = (notice: { message: string; code: string }) => {
+		if (typeof scannerInput.showScanNotice === "function") {
+			scannerInput.showScanNotice(notice);
+			return;
+		}
+		useScanNoticeStore().record(notice);
+		if (typeof scannerInput.playScanTone === "function") {
+			scannerInput.playScanTone("error");
 		}
 	};
 
@@ -703,24 +716,18 @@ export function useScanProcessor(context: ScanProcessorContext) {
 			if (context.onItemNotFound) context.onItemNotFound(scannedCode);
 			void reportUnknownBarcode(scannedCode);
 
-			showScanError({
-				message: `${__("Item not found")}: ${scannedCode}`,
+			showScanNotice({
+				message: `${__("Barcode not found")}. ${__("Reported to backoffice")}`,
 				code: scannedCode,
-				details: `${__("Reported to backoffice")}. ${__(
-					"Please verify the barcode or check the item's availability.",
-				)}`,
 			});
 			return;
 		} catch (e: any) {
 			console.error("Error fetching item from barcode:", e);
 			if (context.onItemNotFound) context.onItemNotFound(scannedCode);
 
-			showScanError({
-				message: `${__("Item not found")}: ${scannedCode}`,
+			showScanNotice({
+				message: __("Could not look up the item. Scan it again."),
 				code: scannedCode,
-				details: __(
-					"The system could not retrieve the item details. Please try again.",
-				),
 			});
 			return;
 		} finally {

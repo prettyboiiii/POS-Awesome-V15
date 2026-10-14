@@ -1,5 +1,6 @@
 import { ref, nextTick, onMounted, onUnmounted } from "vue";
 import { useToastStore } from "../../../stores/toastStore";
+import { useScanNoticeStore } from "../../../stores/scanNoticeStore";
 import {
 	normalizeScaleBarcodeSettings,
 	parseScaleBarcodeSettingsResponse,
@@ -159,6 +160,22 @@ export function useScannerInput(options: ScannerInputOptions = {}) {
 				5,
 			);
 		}
+	};
+
+	// A scan that found no item: tell the cashier without a modal and without locking the scanner,
+	// so the next scan is never lost.
+	const showScanNotice = (options: { message: string; code?: string }) => {
+		useScanNoticeStore().record({
+			message: options.message,
+			code: options.code || "",
+		});
+		pendingScanCode.value = "";
+		awaitingScanResult.value = false;
+		searchFromScanner.value = false;
+		playScanTone("error");
+
+		if (clearSearchHandler.value) clearSearchHandler.value();
+		if (focusSearchHandler.value) focusSearchHandler.value();
 	};
 
 	const handleScanPipelineError = (error: any, code = "") => {
@@ -575,6 +592,7 @@ export function useScannerInput(options: ScannerInputOptions = {}) {
 		// Methods
 		playScanTone,
 		showScanError,
+		showScanNotice,
 		acknowledgeScanError,
 		onBarcodeScanned, // Call this when a code is detected
 		triggerOnScan,

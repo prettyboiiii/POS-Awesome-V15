@@ -14,6 +14,7 @@ vi.mock("../src/posapp/stores/toastStore", () => ({
 }));
 
 import { useScanProcessor } from "../src/posapp/composables/pos/items/useScanProcessor";
+import { useScanNoticeStore } from "../src/posapp/stores/scanNoticeStore";
 import { usePriceTierStore } from "../src/posapp/stores/priceTierStore";
 
 const createScannableItem = (overrides: Record<string, any> = {}) => ({
@@ -115,6 +116,25 @@ describe("useScanProcessor serial scan handling", () => {
 			}),
 			show_alert: vi.fn(),
 		};
+	});
+
+	it("an unknown barcode shows a notice, opens no dialog, keeps the scanner free and the next scan adds", async () => {
+		const ctx = makeContext();
+		const good = { ...createScannableItem(), item_code: "COKE" };
+		ctx.barcodeIndex.lookupItemByBarcode = vi.fn((code: string) =>
+			code === "GOOD" ? good : null,
+		) as any;
+		const { processScannedItem } = useScanProcessor(ctx as any);
+
+		await processScannedItem("NOPE-123");
+		const notice = useScanNoticeStore();
+		expect(notice.last?.code).toBe("NOPE-123");
+		expect(ctx.scannerInput.scanErrorDialog.value).toBe(false);
+		expect(ctx.scannerInput.scannerLocked.value).toBe(false);
+		expect(ctx.scannerInput.playScanTone).toHaveBeenCalledWith("error");
+
+		await processScannedItem("GOOD");
+		expect(ctx.itemAddition.addItem).toHaveBeenCalledTimes(1);
 	});
 
 	it("keeps the price tier a scan was entered under, even if cold mode is switched off before the add", async () => {
