@@ -127,14 +127,6 @@ export function usePaymentSubmission(options: PaymentSubmissionOptions) {
 			: __("Stock is lower than requested:\n{0}", [msg]);
 	};
 
-	const formatStockIssueLines = (issues: any[]) =>
-		issues
-			.map(
-				(issue) =>
-					`${issue.item_code} (${issue.warehouse || __("Unknown Warehouse")}) - ${formatFloat(issue.available_qty)} / ${formatFloat(issue.requested_qty)} requested`,
-			)
-			.join("\n");
-
 	const shouldValidateStockForSubmission = (doc: any, type: string) => {
 		if (!doc || doc.is_return) {
 			return false;
@@ -177,20 +169,8 @@ export function usePaymentSubmission(options: PaymentSubmissionOptions) {
 			: Array.isArray(payload?.errors)
 				? payload.errors
 				: [];
-		const warnings = Array.isArray(payload?.warnings)
-			? payload.warnings
-			: [];
-
 		if (blockingErrors.length) {
 			throw new Error(formatStockErrors(blockingErrors));
-		}
-
-		if (warnings.length) {
-			stores?.toastStore?.show({
-				title: __("Stock is lower than requested"),
-				detail: formatStockIssueLines(warnings),
-				color: "warning",
-			});
 		}
 	};
 
