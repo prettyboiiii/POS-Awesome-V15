@@ -6,7 +6,11 @@
 				:cols="posProfile.posa_input_qty ? 8 : 12"
 				:sm="posProfile.posa_input_qty ? 9 : 12"
 			>
-				<div class="search-field-shell" @keydown.capture="handleSearchKeydownCapture">
+				<div
+					class="search-field-shell"
+					ref="searchShell"
+					@keydown.capture="handleSearchKeydownCapture"
+				>
 					<v-text-field
 						density="compact"
 						clearable
@@ -22,6 +26,7 @@
 						hide-details
 						data-pos-keyboard-target="item-search"
 						data-testid="pos-item-search"
+						:inputmode="scanInputMode"
 						v-search-combobox="{
 							enabled: searchCombobox,
 							expanded: searchExpanded,
@@ -45,6 +50,20 @@
 						ref="debounce_search"
 					>
 						<template v-slot:append-inner>
+							<v-btn
+								v-if="coarsePointer"
+								icon="mdi-keyboard"
+								size="small"
+								color="primary"
+								:variant="keyboardOn ? 'tonal' : 'text'"
+								class="scan-keyboard-btn"
+								data-testid="scan-keyboard-btn"
+								:aria-pressed="keyboardOn ? 'true' : 'false'"
+								:aria-label="__('Show the on-screen keyboard to type a name')"
+								:title="__('Show the on-screen keyboard to type a name')"
+								@click.stop="setKeyboard(!keyboardOn)"
+							>
+							</v-btn>
 							<v-chip
 								v-if="multiplier > 1"
 								size="small"
@@ -256,7 +275,8 @@
 import { multiplierFromKey } from "../../../utils/scanMultiplier";
 import { usePriceCheckStore } from "../../../stores/priceCheckStore";
 import { usePriceTierStore } from "../../../stores/priceTierStore";
-import { computed, ref } from "vue";
+import { isCoarsePointer, scanBoxInputMode } from "../../../utils/touchKeyboard";
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from "vue";
 
 const syncSearchCombobox = (root, state) => {
 	const input = root?.matches?.("input") ? root : root?.querySelector?.("input");
@@ -333,6 +353,33 @@ const emit = defineEmits([
 const priceCheck = usePriceCheckStore();
 const priceTier = usePriceTierStore();
 const debounce_search = ref(null);
+const searchShell = ref(null);
+// Tablet counter: the scanner types into the box, so keep the on-screen keyboard down until it is asked for.
+const coarsePointer = ref(false);
+const keyboardOn = ref(false);
+const scanInputMode = computed(() => scanBoxInputMode(coarsePointer.value, keyboardOn.value));
+let pointerQuery = null;
+const syncPointer = () => {
+	coarsePointer.value = isCoarsePointer(
+		typeof window !== "undefined" ? window.matchMedia?.bind(window) : null,
+	);
+	if (!coarsePointer.value) keyboardOn.value = false;
+};
+onMounted(() => {
+	syncPointer();
+	pointerQuery = window.matchMedia?.("(pointer: coarse)") ?? null;
+	pointerQuery?.addEventListener?.("change", syncPointer);
+});
+onBeforeUnmount(() => pointerQuery?.removeEventListener?.("change", syncPointer));
+// Android re-reads inputmode only on a fresh focus, so blur and focus the box after a change.
+const setKeyboard = async (on) => {
+	keyboardOn.value = !!on;
+	await nextTick();
+	const input = searchShell.value?.querySelector?.("input");
+	if (!input) return;
+	input.blur();
+	input.focus();
+};
 const toolsOpen = ref(false);
 const clampedSyncProgress = computed(() => {
 	const normalized = Number(props.syncProgress);
@@ -385,6 +432,7 @@ const handleSearchKeydown = (event) => {
 		return;
 	}
 	if (event?.key === "Enter") {
+		if (keyboardOn.value) setKeyboard(false);
 		emit("enter", event);
 		return;
 	}
@@ -419,6 +467,8 @@ const handleSearchKeydownCapture = (event) => {
 
 defineExpose({
 	debounce_search,
+	keyboardOn,
+	setKeyboard,
 });
 </script>
 

@@ -2,7 +2,8 @@
 
 import { defineComponent, h } from "vue";
 import { mount } from "@vue/test-utils";
-import { describe, expect, it } from "vitest";
+import { createPinia, setActivePinia } from "pinia";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import ItemHeader from "../src/posapp/components/pos/items/ItemHeader.vue";
 
@@ -82,6 +83,8 @@ const VTextFieldStub = defineComponent({
 });
 
 describe("ItemHeader", () => {
+	beforeEach(() => setActivePinia(createPinia()));
+
 	it("shows a non-blocking sync progress bar while keeping search input enabled", () => {
 		const wrapper = mount(ItemHeader, {
 			props: {
@@ -162,5 +165,73 @@ describe("ItemHeader", () => {
 			"aria-activedescendant": "pharmacy-item-result-41-33-31-30-36",
 		});
 		expect(wrapper.findAll('[role="combobox"]')).toHaveLength(1);
+	});
+
+	describe("soft keyboard on touch devices", () => {
+		const mountHeader = () =>
+			mount(ItemHeader, {
+				attachTo: document.body,
+				props: {
+					searchInput: "",
+					qtyInput: 1,
+					posProfile: { posa_input_qty: false, posa_enable_camera_scanning: false },
+				},
+				global: {
+					mocks: {
+						frappe: { _: (value: string) => value },
+						__: (value: string) => value,
+					},
+					components: {
+						VRow: VRowStub,
+						VCol: VColStub,
+						VBtn: VBtnStub,
+						VExpandTransition: VExpandTransitionStub,
+						VProgressLinear: VProgressLinearStub,
+						VTextField: VTextFieldStub,
+					},
+				},
+			});
+		const setPointer = (coarse: boolean) =>
+			vi.stubGlobal("matchMedia", () => ({
+				matches: coarse,
+				addEventListener: () => {},
+				removeEventListener: () => {},
+			}));
+
+		afterEach(() => vi.unstubAllGlobals());
+
+		it("keeps the scan box on inputmode none and shows a keyboard button on a tablet", async () => {
+			setPointer(true);
+			const wrapper = mountHeader();
+			await wrapper.vm.$nextTick();
+			const input = wrapper.get('input[data-testid="pos-item-search"]');
+			expect(input.attributes("inputmode")).toBe("none");
+			expect(wrapper.find('[data-testid="scan-keyboard-btn"]').exists()).toBe(true);
+			wrapper.unmount();
+		});
+
+		it("opens the keyboard on request and closes it after Enter", async () => {
+			setPointer(true);
+			const wrapper = mountHeader();
+			await wrapper.vm.$nextTick();
+			await wrapper.get('[data-testid="scan-keyboard-btn"]').trigger("click");
+			await wrapper.vm.$nextTick();
+			const input = wrapper.get('input[data-testid="pos-item-search"]');
+			expect(input.attributes("inputmode")).toBeUndefined();
+			await input.trigger("keydown", { key: "Enter" });
+			await wrapper.vm.$nextTick();
+			expect(wrapper.get('input[data-testid="pos-item-search"]').attributes("inputmode")).toBe("none");
+			wrapper.unmount();
+		});
+
+		it("leaves the scan box alone on a mouse PC", async () => {
+			setPointer(false);
+			const wrapper = mountHeader();
+			await wrapper.vm.$nextTick();
+			const input = wrapper.get('input[data-testid="pos-item-search"]');
+			expect(input.attributes("inputmode")).toBeUndefined();
+			expect(wrapper.find('[data-testid="scan-keyboard-btn"]').exists()).toBe(false);
+			wrapper.unmount();
+		});
 	});
 });
