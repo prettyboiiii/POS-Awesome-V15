@@ -5,7 +5,7 @@
 from __future__ import unicode_literals
 import json
 import frappe
-from frappe.utils import cint, nowdate
+from frappe.utils import cint, getdate, nowdate
 from frappe import _
 from .utilities import get_version
 
@@ -62,6 +62,23 @@ def get_opening_dialog_data():
 def create_opening_voucher(pos_profile, company, balance_details):
     balance_details = json.loads(balance_details)
 
+    # mart: one open shift per cashier. Hand over by closing the old one and counting the drawer.
+    existing = frappe.db.get_value(
+        "POS Opening Shift",
+        {
+            "user": frappe.session.user,
+            "pos_closing_shift": ["is", "not set"],
+            "docstatus": 1,
+            "status": "Open",
+        },
+        "name",
+    )
+    if existing:
+        frappe.throw(
+            _("You already have an open shift ({0}). Close it first, then open a new one.").format(existing),
+            title=_("Shift already open"),
+        )
+
     new_pos_opening = frappe.get_doc(
         {
             "doctype": "POS Opening Shift",
@@ -100,6 +117,9 @@ def check_opening_shift(user):
         data = {}
         data["pos_opening_shift"] = frappe.get_doc("POS Opening Shift", open_vouchers[0]["name"])
         update_opening_shift_data(data, open_vouchers[0]["pos_profile"])
+        # mart: a shift opened on an earlier day must be closed (cash counted) before selling on.
+        start = data["pos_opening_shift"].period_start_date
+        data["is_stale"] = 1 if start and getdate(start) < getdate(nowdate()) else 0
     return data
 
 

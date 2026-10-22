@@ -20,6 +20,10 @@ import {
 	startStartupPhase,
 } from "../../../../utils/startupTrace";
 import { buildHeldBillsPrompt } from "../../../utils/heldBills";
+import {
+	buildStaleShiftPrompt,
+	isShiftFromEarlierDay,
+} from "../../../utils/staleShift";
 
 declare const __BUILD_VERSION__: string;
 declare const frappe: any;
@@ -125,7 +129,13 @@ export function usePosShift(openDialog?: () => void) {
 			getOpeningStorage(),
 			frappe?.session?.user,
 		);
-		if (cachedOpening) {
+		// mart #122: do not boot into a shift from an earlier day while the server can answer.
+		const cachedIsStale =
+			!isOffline() &&
+			isShiftFromEarlierDay(
+				(cachedOpening as any)?.pos_opening_shift?.period_start_date,
+			);
+		if (cachedOpening && !cachedIsStale) {
 			applyRegisterData(cachedOpening);
 			console.info("LoadPosProfile (bootstrapped from cache)");
 		}
@@ -134,6 +144,34 @@ export function usePosShift(openDialog?: () => void) {
 				user: frappe.session.user,
 			})
 			.then((r: any) => {
+				if (r.message?.is_stale) {
+					// mart #122: an earlier day's shift is still open; close it first.
+					clearOpeningStorage();
+					pos_profile.value = null;
+					pos_opening_shift.value = null;
+					uiStore.posOpeningShift = null;
+					finishStartupPhase(phase, "ok", {
+						profile: null,
+						source: "server_stale_opening",
+					});
+					const staleShift = r.message.pos_opening_shift;
+					if (
+						window.confirm(
+							buildStaleShiftPrompt(
+								staleShift?.period_start_date,
+								translateMessage,
+							),
+						)
+					) {
+						get_closing_data(staleShift?.name);
+					} else {
+						toastStore.show({
+							title: "Close the earlier shift to start selling. Reload the page to be asked again.",
+							color: "warning",
+						});
+					}
+					return;
+				}
 				if (r.message) {
 					applyRegisterData(r.message);
 					if (pos_profile.value.taxes_and_charges) {
@@ -198,10 +236,11 @@ export function usePosShift(openDialog?: () => void) {
 			});
 	}
 
-	function get_closing_data() {
+	function get_closing_data(shiftOverride?: string) {
 		const cachedOpeningShift = (getOpeningStorage() as any)
 			?.pos_opening_shift;
 		const resolvedShift =
+			(typeof shiftOverride === "string" && shiftOverride) ||
 			uiStore.posOpeningShift ||
 			pos_opening_shift.value ||
 			cachedOpeningShift ||
