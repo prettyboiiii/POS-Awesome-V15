@@ -1028,19 +1028,20 @@ function handleDiscountAmountPaste(event) {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	gap: 6px;
-	min-width: 144px;
+	gap: 10px;
+	min-width: 160px;
 }
 
 .posa-cart-table__qty-stepper .posa-cart-table__qty-input-shell {
 	flex: 1 1 auto;
-	min-width: 52px;
+	min-width: 44px;
 }
 
+/* 48 px finger targets with room between them (mart #158). */
 .posa-cart-table__qty-step {
-	width: 42px;
-	height: 42px;
-	flex: 0 0 42px;
+	width: 48px;
+	height: 48px;
+	flex: 0 0 48px;
 }
 
 /* Local styles specific to the row only */
@@ -1221,6 +1222,8 @@ td[data-column-key="item_name"] {
 }
 
 .posa-cart-table__delete-btn {
+	min-width: 48px !important;
+	min-height: 48px !important;
 	border: 1px solid color-mix(in srgb, var(--pos-error) 32%, var(--pos-border)) !important;
 	background: var(--pos-error-container) !important;
 	color: var(--pos-error) !important;

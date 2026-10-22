@@ -47,14 +47,15 @@
 					</kbd>
 				</v-btn>
 			</v-col>
-			<v-col cols="12">
+			<!-- mart: cancel sits well apart from the confirm buttons so a finger cannot hit it by mistake. -->
+			<v-col cols="12" class="payment-cancel-col">
 				<v-btn
 					block
 					size="large"
 					color="error"
-					variant="tonal"
+					variant="outlined"
 					prepend-icon="mdi-close-circle-outline"
-					class="mt-2 pa-1 payment-cancel-btn payment-footer-btn"
+					class="pa-1 payment-cancel-btn payment-footer-btn"
 					data-pos-keyboard-target="payment-cancel"
 					data-testid="payment-cancel"
 					@click="$emit('cancel')"
@@ -101,6 +102,12 @@ const __ = window.__;
 	border-radius: var(--pos-radius-sm) !important;
 	font-weight: 700 !important;
 	letter-spacing: 0.01em !important;
+}
+
+.payment-cancel-col {
+	margin-top: 28px;
+	padding-top: 16px;
+	border-top: 1px solid var(--pos-border);
 }
 
 .payment-footer-btn__shortcut {

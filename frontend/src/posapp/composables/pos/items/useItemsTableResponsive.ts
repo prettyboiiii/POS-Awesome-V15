@@ -41,7 +41,7 @@ const STANDARD_COLUMN_WIDTHS: Record<string, ColumnWidthConfig> = {
 
 const DENSE_COLUMN_WIDTHS: Record<string, ColumnWidthConfig> = {
 	item_name: { min: 148, max: 178, ratio: 0.17 },
-	qty: { min: 150, max: 170, ratio: 0.17 },
+	qty: { min: 160, max: 176, ratio: 0.17 },
 	uom: { min: 72, max: 88, ratio: 0.075 },
 	rate: { min: 86, max: 98, ratio: 0.09 },
 	amount: { min: 94, max: 108, ratio: 0.1 },
@@ -95,8 +95,8 @@ export function getResponsiveVisibleHeaders(
 		const compactQty = header.key === "qty" && width > 0 && width < 640;
 		return {
 			...header,
-			width: compactQty ? 150 : calculateColumnWidth(header, width, dense),
-			minWidth: compactQty ? 150 : calculateMinColumnWidth(header, dense),
+			width: compactQty ? 160 : calculateColumnWidth(header, width, dense),
+			minWidth: compactQty ? 160 : calculateMinColumnWidth(header, dense),
 		};
 	});
 }

@@ -4,9 +4,9 @@
 		persistent
 		max-width="720"
 		scrim="rgba(0,0,0,0.55)"
-		@update:model-value="dismiss"
+		@update:model-value="dismissFrom('scrim')"
 	>
-		<v-card v-if="sale" class="sale-complete" data-testid="sale-complete" @click="dismiss">
+		<v-card v-if="sale" class="sale-complete" data-testid="sale-complete" @click="dismissFrom('card')">
 			<div class="sale-complete__head">
 				<v-icon size="44" color="success">mdi-check-circle</v-icon>
 				<h2>{{ __("Sale completed") }}</h2>
@@ -31,7 +31,7 @@
 				block
 				class="sale-complete__next"
 				data-testid="sale-complete-next"
-				@click.stop="dismiss"
+				@click.stop="dismissFrom('button')"
 			>
 				{{ __("Next customer") }}
 			</v-btn>
@@ -43,6 +43,7 @@
 import { computed, onBeforeUnmount, watch } from "vue";
 import { storeToRefs } from "pinia";
 import { useUIStore } from "../../../stores/uiStore";
+import { saleCompleteMayDismiss, type DismissSource } from "../../../utils/saleComplete";
 
 declare const __: (_text: string, _args?: any[]) => string;
 
@@ -69,10 +70,15 @@ const dismiss = () => {
 	uiStore.triggerItemSearchFocus?.();
 };
 
+// With change to hand back, only the Next customer button closes the card (a stray tap or scanner key
+// must not hide the amount before it is read, mart #159). A sale with no change closes on any tap or key,
+// or by itself, so the next scan is never lost.
+const dismissFrom = (source: DismissSource) => {
+	if (saleCompleteMayDismiss(source, Boolean(sale.value && sale.value.change > 0))) dismiss();
+};
+
 let timer: ReturnType<typeof setTimeout> | null = null;
-// Any key (a scanner types one) closes it so the next scan is never lost. With change to hand back it
-// stays until tapped or a key is pressed; without change it closes by itself.
-const onKey = () => dismiss();
+const onKey = () => dismissFrom("key");
 
 watch(
 	sale,

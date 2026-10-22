@@ -27,7 +27,7 @@
 			</div>
 		</v-col>
 		<!-- mart: the bill total first, so the cashier sees what to collect before what was received. -->
-		<v-col v-if="!exchangeActive" cols="12" sm="4" class="payment-summary-grid__due">
+		<v-col v-if="!exchangeActive" cols="12" class="payment-summary-grid__due">
 			<v-text-field
 				variant="solo"
 				color="primary"
@@ -41,7 +41,7 @@
 				density="compact"
 			></v-text-field>
 		</v-col>
-		<v-col cols="12" :sm="exchangeActive ? 7 : 4" class="payment-summary-grid__paid">
+		<v-col cols="12" :sm="exchangeActive ? 7 : 12" class="payment-summary-grid__paid">
 			<v-text-field
 				variant="solo"
 				color="primary"
@@ -57,7 +57,7 @@
 		</v-col>
 		<v-col
 			cols="12"
-			:sm="exchangeActive ? 5 : 4"
+			:sm="exchangeActive ? 5 : 12"
 			class="payment-summary-grid__difference"
 			data-testid="payment-difference"
 			:data-state="settlementState"
@@ -73,7 +73,19 @@
 				density="compact"
 				@focus="$emit('show-diff-payment')"
 				persistent-placeholder
-			></v-text-field>
+			>
+				<!-- mart: the state is also said in words and an icon, never by colour alone. -->
+				<template v-if="!exchangeActive && !invoice_doc.is_return" #append-inner>
+					<span
+						class="payment-summary-grid__state"
+						data-testid="payment-state"
+						:data-state="settlementState"
+					>
+						<v-icon :icon="settlementBadge(settlementState).icon" size="22" />
+						{{ settlementBadge(settlementState).text }}
+					</span>
+				</template>
+			</v-text-field>
 		</v-col>
 
 		<v-col v-if="baseCurrency" cols="12">
@@ -149,6 +161,7 @@
 <script setup>
 import { computed } from "vue";
 import { amountDueAfterRedeem } from "../../../utils/pointsRedeem";
+import { settlementBadge, settlementStateOf } from "../../../utils/settlementState";
 
 const props = defineProps({
 	invoice_doc: Object,
@@ -216,12 +229,7 @@ const baseSettlementState = computed(() => {
 	return "balanced";
 });
 
-const settlementState = computed(() => {
-	const difference = Number(props.diffPayment || 0);
-	if (difference > 0) return "remaining";
-	if (difference < 0) return "change";
-	return "balanced";
-});
+const settlementState = computed(() => settlementStateOf(props.diffPayment));
 
 const baseSettlementLabel = computed(() => {
 	if (baseSettlementState.value === "remaining") return frappe._("Base Remaining");
@@ -311,6 +319,28 @@ const baseSettlementLabel = computed(() => {
 	font-size: 1.05rem;
 	font-weight: 700;
 	font-variant-numeric: tabular-nums;
+}
+
+.payment-summary-grid__due :deep(input),
+.payment-summary-grid__paid :deep(input),
+.payment-summary-grid__difference :deep(input) {
+	font-size: 1.9rem;
+	font-weight: 800;
+	font-variant-numeric: tabular-nums;
+}
+
+.payment-summary-grid__due :deep(.v-field) {
+	border: 2px solid var(--pos-border);
+	box-shadow: none;
+}
+
+.payment-summary-grid__state {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	font-size: 1.1rem;
+	font-weight: 700;
+	white-space: nowrap;
 }
 
 .payment-summary-grid__difference[data-state="remaining"] :deep(.v-field) {

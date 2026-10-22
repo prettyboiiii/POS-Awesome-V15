@@ -90,11 +90,13 @@
 					@toggle-offer="toggleOffer"
 					@toggle-expand="openItemHistory(item)"
 					@open-batch-serial="openBatchSerialSelector"
-					@remove-item="removeItem"
+					@remove-item="removeLine"
 					@click="handleRowClick($event, item)"
 				/>
 			</template>
 		</v-data-table-virtual>
+
+		<UndoRemoveSnackbar @restore="restoreRemovedLine" />
 
 		<BatchSerialSelectionDialog
 			v-model="batchSerialDialog"
@@ -166,6 +168,9 @@ import {
 import { loadItemSelectorSettings } from "../../../utils/itemSelectorSettings";
 import { logComponentRender } from "../../../utils/perf";
 import CartItemRow from "./CartItemRow.vue";
+import UndoRemoveSnackbar from "./UndoRemoveSnackbar.vue";
+import { useUndoRemoveStore } from "../../../stores/undoRemoveStore";
+import { restoreIndex } from "../../../utils/undoRemove";
 import CounterGridEntryRow from "./CounterGridEntryRow.vue";
 import ItemSalesHistoryModal from "./ItemSalesHistoryModal.vue";
 
@@ -292,6 +297,20 @@ const nameEdit = useItemsTableNameEdit();
 
 // Computed
 const items = computed(() => invoiceStore.items);
+const undoRemove = useUndoRemoveStore();
+
+// A removal the cashier does by hand (trash, "-" on 1, qty 0) can be taken back for a few seconds.
+const removeLine = (item: any) => {
+	undoRemove.record(item, items.value.findIndex((row: any) => row?.posa_row_id === item?.posa_row_id));
+	props.removeItem(item);
+};
+
+const restoreRemovedLine = ({ line, index }: { line: Record<string, any>; index: number }) => {
+	if (items.value.some((row: any) => row?.posa_row_id === line.posa_row_id)) return;
+	invoiceStore.addItem(line, restoreIndex(index, items.value.length));
+	eventBus?.emit("apply_pricing_rules");
+	eventBus?.emit("recalculate_return_discount", { defer: true });
+};
 const displayItems = computed(() =>
 	props.counterGrid ? [...items.value, counterGridEntryItem] : items.value,
 );
@@ -906,7 +925,7 @@ const getSerialOptions = (item: any) => {
 const handleQtyChange = (item: any, event: any) => {
 	const newQty = parseFloat(event.target.value) || 0;
 	if (newQty === 0) {
-		props.removeItem(item);
+		removeLine(item);
 	} else {
 		props.setFormatedQty(item, "qty", null, false, event.target.value);
 	}
@@ -916,7 +935,7 @@ const handleQtyChange = (item: any, event: any) => {
 const handleMinusClick = (item: any) => {
 	// Replacement rows should still be removed directly.
 	if (item.posa_is_replace) {
-		props.removeItem(item);
+		removeLine(item);
 		return;
 	}
 
@@ -924,7 +943,7 @@ const handleMinusClick = (item: any) => {
 	// This handles -1 for returns and 1 for normal invoices correctly
 	const absQty = Math.abs(item.qty || 0);
 	if (absQty <= 1) {
-		props.removeItem(item);
+		removeLine(item);
 	} else {
 		// subtract_one handles the sign-aware logic (e.g. -5 -> -4 in returns)
 		props.subtractOne(item);
