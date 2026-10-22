@@ -5,6 +5,7 @@ import { mount } from "@vue/test-utils";
 import { createPinia, setActivePinia } from "pinia";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { useNumpadStore } from "../src/posapp/stores/numpadStore";
 import ItemHeader from "../src/posapp/components/pos/items/ItemHeader.vue";
 
 const VRowStub = defineComponent({
@@ -168,13 +169,14 @@ describe("ItemHeader", () => {
 	});
 
 	describe("soft keyboard on touch devices", () => {
-		const mountHeader = () =>
+		const mountHeader = (extra: Record<string, unknown> = {}) =>
 			mount(ItemHeader, {
 				attachTo: document.body,
 				props: {
 					searchInput: "",
 					qtyInput: 1,
 					posProfile: { posa_input_qty: false, posa_enable_camera_scanning: false },
+					...extra,
 				},
 				global: {
 					mocks: {
@@ -221,6 +223,18 @@ describe("ItemHeader", () => {
 			await input.trigger("keydown", { key: "Enter" });
 			await wrapper.vm.$nextTick();
 			expect(wrapper.get('input[data-testid="pos-item-search"]').attributes("inputmode")).toBe("none");
+			wrapper.unmount();
+		});
+
+		it("opens the numpad on the scan box from the multiplier button on a tablet", async () => {
+			setPointer(true);
+			const wrapper = mountHeader({ context: "pos" });
+			await wrapper.vm.$nextTick();
+			await wrapper.get('[data-testid="scan-multiplier-btn"]').trigger("click");
+			const numpad = useNumpadStore();
+			expect(numpad.target).toBe(wrapper.get('input[data-testid="pos-item-search"]').element);
+			expect(numpad.kind).toBe("multiplier");
+			numpad.close();
 			wrapper.unmount();
 		});
 

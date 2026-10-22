@@ -53,7 +53,7 @@
 						:type="pinVisibility.current_pin ? 'text' : 'password'"
 						name="pos-current-cashier-pin"
 						autocomplete="one-time-code"
-						inputmode="numeric"
+						v-bind="pinNumpadAttrs"
 						pattern="[0-9]*"
 						data-1p-ignore="true"
 						data-lpignore="true"
@@ -82,7 +82,7 @@
 						:type="pinVisibility.new_pin ? 'text' : 'password'"
 						name="pos-new-cashier-pin"
 						autocomplete="one-time-code"
-						inputmode="numeric"
+						v-bind="pinNumpadAttrs"
 						pattern="[0-9]*"
 						data-1p-ignore="true"
 						data-lpignore="true"
@@ -111,7 +111,7 @@
 						:type="pinVisibility.confirm_pin ? 'text' : 'password'"
 						name="pos-confirm-cashier-pin"
 						autocomplete="one-time-code"
-						inputmode="numeric"
+						v-bind="pinNumpadAttrs"
 						pattern="[0-9]*"
 						data-1p-ignore="true"
 						data-lpignore="true"
@@ -150,10 +150,16 @@
 
 <script setup>
 import { computed, reactive, ref, watch } from "vue";
+import { useCoarsePointer } from "../../composables/core/useCoarsePointer";
+import { numpadAttrs } from "../../utils/numpadInput";
 
 defineOptions({
 	name: "NavbarCashierPinForm",
 });
+
+// Tablet: the in-app numpad types the PIN instead of the soft keyboard (mart #155).
+const { coarsePointer } = useCoarsePointer();
+const pinNumpadAttrs = computed(() => numpadAttrs("pin", coarsePointer.value, globalThis.__?.("PIN") ?? "PIN"));
 
 const props = defineProps({
 	posProfile: {

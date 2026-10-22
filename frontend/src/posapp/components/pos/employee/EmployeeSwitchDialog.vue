@@ -108,7 +108,7 @@
 						:type="showPin ? 'text' : 'password'"
 						name="pos-cashier-switch-pin"
 						autocomplete="one-time-code"
-						inputmode="numeric"
+						v-bind="pinNumpadAttrs"
 						pattern="[0-9]*"
 						data-1p-ignore="true"
 						data-lpignore="true"
@@ -244,7 +244,7 @@
 						:type="showPin ? 'text' : 'password'"
 						name="pos-terminal-unlock-pin"
 						autocomplete="one-time-code"
-						inputmode="numeric"
+						v-bind="pinNumpadAttrs"
 						pattern="[0-9]*"
 						data-1p-ignore="true"
 						data-lpignore="true"
@@ -290,10 +290,15 @@
 
 <script setup>
 import { computed, ref, watch } from "vue";
+import { useCoarsePointer } from "../../../composables/core/useCoarsePointer";
+import { numpadAttrs } from "../../../utils/numpadInput";
 import { storeToRefs } from "pinia";
 import { useEmployeeStore } from "../../../stores/employeeStore";
 import { useUIStore } from "../../../stores/uiStore";
 
+// Tablet: the in-app numpad types the PIN instead of the soft keyboard (mart #155).
+const { coarsePointer } = useCoarsePointer();
+const pinNumpadAttrs = computed(() => numpadAttrs("pin", coarsePointer.value, globalThis.__?.("Cashier PIN") ?? "Cashier PIN"));
 const employeeStore = useEmployeeStore();
 const uiStore = useUIStore();
 const emit = defineEmits(["retry-load"]);

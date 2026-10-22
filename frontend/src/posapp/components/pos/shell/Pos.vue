@@ -11,6 +11,7 @@
 		<NewAddress></NewAddress>
 		<MpesaPayments></MpesaPayments>
 		<SaleCompleteOverlay></SaleCompleteOverlay>
+		<NumPad></NumPad>
 		<MemberSheet></MemberSheet>
 		<TierCheckDialog></TierCheckDialog>
 		<Variants></Variants>
@@ -290,6 +291,7 @@ import ItemsSelector from "../items/ItemsSelector.vue";
 import Invoice from "../Invoice.vue";
 import CounterGridHealthStrip from "./CounterGridHealthStrip.vue";
 import SaleCompleteOverlay from "./SaleCompleteOverlay.vue";
+import NumPad from "./NumPad.vue";
 import MemberSheet from "./MemberSheet.vue";
 import TierCheckDialog from "./TierCheckDialog.vue";
 import OpeningDialog from "../shift/OpeningDialog.vue";
@@ -925,6 +927,7 @@ export default {
 		Invoice,
 		CounterGridHealthStrip,
 		SaleCompleteOverlay,
+		NumPad,
 		MemberSheet,
 		TierCheckDialog,
 		OpeningDialog,

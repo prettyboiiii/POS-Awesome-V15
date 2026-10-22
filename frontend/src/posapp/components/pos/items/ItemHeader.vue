@@ -275,8 +275,10 @@
 import { multiplierFromKey } from "../../../utils/scanMultiplier";
 import { usePriceCheckStore } from "../../../stores/priceCheckStore";
 import { usePriceTierStore } from "../../../stores/priceTierStore";
-import { isCoarsePointer, scanBoxInputMode } from "../../../utils/touchKeyboard";
-import { computed, nextTick, onBeforeUnmount, onMounted, ref } from "vue";
+import { scanBoxInputMode } from "../../../utils/touchKeyboard";
+import { useCoarsePointer } from "../../../composables/core/useCoarsePointer";
+import { useNumpadStore } from "../../../stores/numpadStore";
+import { computed, nextTick, ref } from "vue";
 
 const syncSearchCombobox = (root, state) => {
 	const input = root?.matches?.("input") ? root : root?.querySelector?.("input");
@@ -355,22 +357,10 @@ const priceTier = usePriceTierStore();
 const debounce_search = ref(null);
 const searchShell = ref(null);
 // Tablet counter: the scanner types into the box, so keep the on-screen keyboard down until it is asked for.
-const coarsePointer = ref(false);
+const { coarsePointer } = useCoarsePointer();
+const numpad = useNumpadStore();
 const keyboardOn = ref(false);
 const scanInputMode = computed(() => scanBoxInputMode(coarsePointer.value, keyboardOn.value));
-let pointerQuery = null;
-const syncPointer = () => {
-	coarsePointer.value = isCoarsePointer(
-		typeof window !== "undefined" ? window.matchMedia?.bind(window) : null,
-	);
-	if (!coarsePointer.value) keyboardOn.value = false;
-};
-onMounted(() => {
-	syncPointer();
-	pointerQuery = window.matchMedia?.("(pointer: coarse)") ?? null;
-	pointerQuery?.addEventListener?.("change", syncPointer);
-});
-onBeforeUnmount(() => pointerQuery?.removeEventListener?.("change", syncPointer));
 // Android re-reads inputmode only on a fresh focus, so blur and focus the box after a change.
 const setKeyboard = async (on) => {
 	keyboardOn.value = !!on;
@@ -407,6 +397,15 @@ const blurTarget = (event) => {
 };
 
 const applyMultiplierFromField = () => {
+	// Tablet: no keyboard to type "5 *", so the multiplier button opens the numpad on the scan box.
+	if (coarsePointer.value) {
+		const input = searchShell.value?.querySelector?.("input");
+		if (input) {
+			input.focus();
+			numpad.open(input, "multiplier", translate("Quantity for the next item"));
+			return;
+		}
+	}
 	const value = multiplierFromKey(props.searchInput, "*");
 	if (value !== null) emit("set-multiplier", value);
 };

@@ -172,7 +172,7 @@
 							@click.stop
 							ref="qtyInput"
 							type="text"
-							inputmode="decimal"
+							v-bind="qtyNumpadAttrs"
 							autocomplete="off"
 							autocorrect="off"
 							autocapitalize="off"
@@ -485,6 +485,8 @@
 <script setup>
 import { computed, nextTick, ref, watch } from "vue";
 import { usePriceTierStore } from "../../../stores/priceTierStore";
+import { useCoarsePointer } from "../../../composables/core/useCoarsePointer";
+import { numpadAttrs } from "../../../utils/numpadInput";
 import { nextTier, tierLabel, tierRate } from "../../../utils/priceTier";
 import { getCartGridCellId, getCartGridRowId } from "../../../utils/cartFieldFocus";
 import { normalizeCartEditQuantity } from "../../../utils/cartQuantity";
@@ -577,6 +579,12 @@ const cycleTier = () => {
 };
 
 const __ = window.__ || ((text) => text);
+
+// Tablet: the in-app numpad types into the quantity box instead of the soft keyboard (mart #155).
+const { coarsePointer } = useCoarsePointer();
+const qtyNumpadAttrs = computed(() =>
+	numpadAttrs(props.hideQtyDecimals ? "integer" : "decimal", coarsePointer.value, __("Quantity")),
+);
 
 const editingQtyValue = ref("");
 const isEditingQty = ref(false);

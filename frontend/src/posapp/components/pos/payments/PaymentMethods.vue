@@ -130,6 +130,7 @@
 				>
 					<v-text-field
 						data-pos-keyboard-target="payment-amount"
+						v-bind="amountNumpadAttrs"
 						:data-testid="`payment-amount-${payment.mode_of_payment}`"
 						density="compact"
 						variant="solo"
@@ -269,9 +270,15 @@
 
 <script setup>
 import { computed, ref, watch } from "vue";
+import { useCoarsePointer } from "../../../composables/core/useCoarsePointer";
+import { numpadAttrs } from "../../../utils/numpadInput";
 
 const frappe = window.frappe;
 const __ = window.__;
+
+// Tablet: the in-app numpad types the tender amount instead of the soft keyboard (mart #155).
+const { coarsePointer } = useCoarsePointer();
+const amountNumpadAttrs = computed(() => numpadAttrs("decimal", coarsePointer.value, __("Amount")));
 
 const props = defineProps({
 	payments: Array,
