@@ -279,7 +279,10 @@ def make_closing_shift_from_opening(opening_shift):
 @frappe.whitelist()
 def submit_closing_shift(closing_shift):
     closing_shift = json.loads(closing_shift)
+    # mart: explicit choice made on the closing screen; never part of the document.
+    discard_held_bills = bool(closing_shift.pop("discard_held_bills", 0))
     closing_shift_doc = frappe.get_doc(closing_shift)
+    closing_shift_doc.flags.discard_held_bills = discard_held_bills
     closing_shift_doc.flags.ignore_permissions = True
     normalize_pos_payment_references(closing_shift_doc)
     closing_shift_doc.save()

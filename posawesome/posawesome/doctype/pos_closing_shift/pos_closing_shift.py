@@ -22,6 +22,7 @@ from posawesome.posawesome.doctype.pos_closing_shift.closing_processing.creation
 from posawesome.posawesome.doctype.pos_closing_shift.closing_processing.invoices import (
     submit_printed_invoices,
     delete_draft_invoices,
+    get_held_draft_invoices,
     _set_closing_entry_invoices,
     _clear_closing_entry_invoices,
     consolidate_closing_shift_invoices,
@@ -75,6 +76,19 @@ class POSClosingShift(Document):
                 d.difference_in_currency = closing_currency - expected_currency
             d.difference = +flt(d.closing_amount, precision) - flt(d.expected_amount, precision)
 
+    def before_submit(self):
+        # mart: closing deletes held bills, so it must be an explicit choice, never silent.
+        if self.flags.get("discard_held_bills"):
+            return
+        held = get_held_draft_invoices(self.pos_opening_shift, self.pos_profile)
+        if held:
+            frappe.throw(
+                _("{0} held bills would be deleted by closing. Resume or cancel them first.").format(
+                    len(held)
+                ),
+                title=_("Held bills"),
+            )
+
     def on_submit(self):
         opening_entry = frappe.get_doc("POS Opening Shift", self.pos_opening_shift)
         opening_entry.pos_closing_shift = self.name
@@ -101,3 +115,12 @@ class POSClosingShift(Document):
     @frappe.whitelist()
     def get_payment_reconciliation_details(self):
         return get_payment_reconciliation_details(self)
+
+
+@frappe.whitelist()
+def get_held_bills(pos_opening_shift):
+    """Held bills that closing this shift would delete (shown before the cashier confirms)."""
+    pos_profile = frappe.db.get_value("POS Opening Shift", pos_opening_shift, "pos_profile")
+    if not pos_profile:
+        return []
+    return get_held_draft_invoices(pos_opening_shift, pos_profile)

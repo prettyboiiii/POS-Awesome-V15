@@ -76,32 +76,44 @@ def _is_consolidated_sales_invoice(sales_invoice):
     return bool(frappe.db.exists("POS Invoice Merge Log", {"consolidated_credit_note": sales_invoice}))
 
 
-def delete_draft_invoices(pos_opening_shift, pos_profile):
-    if frappe.get_value("POS Profile", pos_profile, "posa_allow_delete"):
-        doctype = (
-            "POS Invoice"
-            if frappe.db.get_value(
-                "POS Profile",
-                pos_profile,
-                "create_pos_invoice_instead_of_sales_invoice",
-            )
-            else "Sales Invoice"
+def get_held_draft_invoices(pos_opening_shift, pos_profile):
+    """Return the held (draft, never printed) bills of a shift that closing would delete.
+
+    mart: closing used to delete these silently. Empty list when the profile keeps drafts
+    (``posa_allow_delete`` off), because nothing is deleted then.
+    """
+    if not frappe.get_value("POS Profile", pos_profile, "posa_allow_delete"):
+        return []
+    doctype = (
+        "POS Invoice"
+        if frappe.db.get_value(
+            "POS Profile",
+            pos_profile,
+            "create_pos_invoice_instead_of_sales_invoice",
         )
-        data = frappe.db.sql(
-            f"""
+        else "Sales Invoice"
+    )
+    rows = frappe.db.sql(
+        f"""
         select
-            name
+            name, customer_name, grand_total, currency
         from
             `tab{doctype}`
         where
             docstatus = 0 and posa_is_printed = 0 and posa_pos_opening_shift = %s
+        order by modified desc
         """,
-            (pos_opening_shift),
-            as_dict=1,
-        )
+        (pos_opening_shift,),
+        as_dict=1,
+    )
+    for row in rows:
+        row["doctype"] = doctype
+    return rows
 
-        for invoice in data:
-            frappe.delete_doc(doctype, invoice.name, force=1)
+
+def delete_draft_invoices(pos_opening_shift, pos_profile):
+    for invoice in get_held_draft_invoices(pos_opening_shift, pos_profile):
+        frappe.delete_doc(invoice["doctype"], invoice["name"], force=1)
 
 
 def _get_cancelled_return_against(invoice_doc, doctype):

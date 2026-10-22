@@ -19,6 +19,7 @@ import {
 	finishStartupPhase,
 	startStartupPhase,
 } from "../../../../utils/startupTrace";
+import { buildHeldBillsPrompt } from "../../../utils/heldBills";
 
 declare const __BUILD_VERSION__: string;
 declare const frappe: any;
@@ -239,7 +240,25 @@ export function usePosShift(openDialog?: () => void) {
 						}
 					}
 
-					eventBus?.emit("open_ClosingDialog", closingShift);
+					// mart #121: held bills are deleted on close, so ask first.
+					return frappe
+						.call(
+							"posawesome.posawesome.doctype.pos_closing_shift.pos_closing_shift.get_held_bills",
+							{ pos_opening_shift: resolvedShift },
+						)
+						.then((held: any) => {
+							const bills = Array.isArray(held?.message) ? held.message : [];
+							if (bills.length) {
+								const confirmed = window.confirm(
+									buildHeldBillsPrompt(bills, translateMessage),
+								);
+								if (!confirmed) {
+									return;
+								}
+								closingShift.discard_held_bills = 1;
+							}
+							eventBus?.emit("open_ClosingDialog", closingShift);
+						});
 				}
 			});
 	}
