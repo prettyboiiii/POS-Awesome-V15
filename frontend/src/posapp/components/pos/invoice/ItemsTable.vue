@@ -877,6 +877,22 @@ const getSelectedGridItem = () => {
 };
 
 // Watchers
+// mart #76: the newest line sits on top, so a new scan must bring the cart back to the top even when the
+// cashier had scrolled down to check an earlier line.
+const scrollCartToNewest = () => {
+	const root = tableContainer.value;
+	if (!root) return;
+	root.scrollTop = 0;
+	root.querySelectorAll<HTMLElement>(".v-table__wrapper").forEach((el) => {
+		el.scrollTop = 0;
+	});
+};
+watch(
+	() => items.value[0]?.posa_row_id,
+	() => {
+		void nextTick(scrollCartToNewest);
+	},
+);
 watch(() => props.displayCurrency, clearFormatCache);
 watch(() => props.pos_profile, clearFormatCache, { deep: true });
 watch(items, () => {
