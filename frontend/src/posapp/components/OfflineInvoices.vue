@@ -181,7 +181,7 @@
 										data-test="retry-offline-invoice"
 										@click="retryInvoice(item)"
 									>
-										{{ __("Retry") }}
+										{{ __("Retry sending") }}
 									</v-btn>
 									<v-btn
 										v-if="item.status === 'dead_letter' || posProfile.posa_allow_delete_offline_invoice"
@@ -258,7 +258,7 @@
 						{{ __("Cancel") }}
 					</v-btn>
 					<v-btn color="error" variant="elevated" data-test="discard-confirm" @click="confirmRemove">
-						{{ __("Discard") }}
+						{{ __("Discard sale") }}
 					</v-btn>
 				</v-card-actions>
 			</v-card>
@@ -328,7 +328,7 @@ const headers = [
 		width: "25%",
 	},
 	{
-		title: __("Status"),
+		title: __("Sync status"),
 		value: "status",
 		align: "start",
 		width: "20%",
