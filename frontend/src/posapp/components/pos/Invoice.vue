@@ -8,6 +8,15 @@
 		<!-- Cancel Sale Confirmation Dialog -->
 		<CancelSaleDialog v-model="cancel_dialog" @confirm="cancel_invoice" />
 
+		<!-- mart #78: offered after a reload when the previous cart was saved in the browser -->
+		<ResumeCartDialog
+			:model-value="resume_cart_dialog"
+			:line-count="resumeCartLineCount"
+			:total-qty="resumeCartTotalQty"
+			@resume="resumeSavedCart"
+			@discard="discardSavedCart"
+		/>
+
 		<!-- Main Invoice Card (contains all invoice content) -->
 		<v-card
 			ref="invoiceCard"
@@ -304,6 +313,15 @@ import DeliveryCharges from "./invoice/DeliveryCharges.vue";
 import PostingDateRow from "./invoice/PostingDateRow.vue";
 import MultiCurrencyRow from "./invoice/MultiCurrencyRow.vue";
 import CancelSaleDialog from "./invoice/CancelSaleDialog.vue";
+import ResumeCartDialog from "./invoice/ResumeCartDialog.vue";
+import {
+	buildCartSnapshot,
+	clearCartSnapshot,
+	readCartSnapshot,
+	snapshotMatchesScope,
+	snapshotToDraft,
+	writeCartSnapshot,
+} from "../../utils/cartSnapshot";
 import InvoiceSummary from "./invoice/InvoiceSummary.vue";
 import ItemsTable from "./invoice/ItemsTable.vue";
 import InvoiceItemsActionToolbar from "./invoice/InvoiceItemsActionToolbar.vue";
@@ -453,6 +471,11 @@ export default {
 			expanded: [],
 			singleExpand: true,
 			cancel_dialog: false,
+			resume_cart_dialog: false,
+			resumeCartSnapshot: null,
+			cartPersistReady: false,
+			cartPersistTimer: null,
+			cartRecoveryKey: "",
 			available_stock_cache: {},
 			item_detail_cache: {},
 			item_stock_cache: {},
@@ -489,6 +512,7 @@ export default {
 		MultiCurrencyRow,
 		InvoiceSummary,
 		CancelSaleDialog,
+		ResumeCartDialog,
 		ItemsTable,
 		InvoiceItemsActionToolbar,
 		PackedItemsDialog,
@@ -497,6 +521,12 @@ export default {
 		ItemQuickEditDialog,
 	},
 	computed: {
+		resumeCartLineCount() {
+			return this.resumeCartSnapshot?.items?.length || 0;
+		},
+		resumeCartTotalQty() {
+			return (this.resumeCartSnapshot?.items || []).reduce((sum, line) => sum + (Number(line.qty) || 0), 0);
+		},
 		isCounterGridPresentation() {
 			return this.presentation === "counter-grid";
 		},
@@ -1052,6 +1082,114 @@ export default {
 			this.fetch_available_currencies();
 			this.refresh_parked_orders();
 			void this.restorePendingExchange();
+			this.checkSavedCart();
+		},
+		// mart #78: cart kept in localStorage; writes start only after the resume question is settled so a
+		// fresh empty cart never wipes the saved one.
+		cartPersistScope() {
+			return {
+				user: frappe?.session?.user,
+				posProfile: this.pos_profile?.name,
+				openingShift: this.pos_opening_shift?.name,
+			};
+		},
+		checkSavedCart() {
+			const scope = this.cartPersistScope();
+			if (!scope.user || !scope.posProfile || !scope.openingShift) return;
+			const key = [scope.user, scope.posProfile, scope.openingShift].join("::");
+			if (this.cartRecoveryKey === key) return;
+			this.cartRecoveryKey = key;
+			const snapshot = readCartSnapshot();
+			if (snapshot && !snapshotMatchesScope(snapshot, scope)) {
+				clearCartSnapshot();
+			} else if (snapshot && !this.items.length && !this.invoiceStore.exchangeSession) {
+				this.resumeCartSnapshot = snapshot;
+				this.resume_cart_dialog = true;
+				return;
+			}
+			this.cartPersistReady = true;
+		},
+		scheduleCartPersist() {
+			if (!this.cartPersistReady) return;
+			if (this.cartPersistTimer) clearTimeout(this.cartPersistTimer);
+			this.cartPersistTimer = setTimeout(() => this.flushCartPersist(), 300);
+		},
+		flushCartPersist() {
+			if (this.cartPersistTimer) {
+				clearTimeout(this.cartPersistTimer);
+				this.cartPersistTimer = null;
+			}
+			if (!this.cartPersistReady) return;
+			const snapshot =
+				this.invoiceType === "Invoice" && !this.invoiceStore.exchangeSession
+					? buildCartSnapshot({
+							scope: this.cartPersistScope(),
+							customer: this.customer,
+							invoiceDoc: this.invoice_doc,
+							items: this.items,
+							packedItems: this.packed_items,
+						})
+					: null;
+			if (snapshot) {
+				writeCartSnapshot(snapshot);
+			} else {
+				clearCartSnapshot();
+			}
+		},
+		async savedDraftStatus(name) {
+			// Server draft left by the pay dialog: 0 = still a draft, null = gone or not a draft.
+			try {
+				const res = await frappe.call({
+					method: "frappe.client.get_value",
+					args: { doctype: "Sales Invoice", filters: { name }, fieldname: "docstatus" },
+				});
+				const docstatus = res?.message?.docstatus;
+				return docstatus === 0 ? 0 : null;
+			} catch (error) {
+				console.warn("Unable to check the saved draft:", error);
+				return undefined;
+			}
+		},
+		async resumeSavedCart() {
+			const snapshot = this.resumeCartSnapshot;
+			this.resume_cart_dialog = false;
+			this.resumeCartSnapshot = null;
+			if (!snapshot) {
+				this.cartPersistReady = true;
+				return;
+			}
+			const draft = snapshotToDraft(snapshot);
+			if (draft.name && (await this.savedDraftStatus(draft.name)) === null) {
+				// Draft was deleted or submitted meanwhile; keep the lines, let the next pay create a new one.
+				delete draft.name;
+			}
+			await this.load_invoice(draft, { preserveStickies: true });
+			this.cartPersistReady = true;
+			this.flushCartPersist();
+			this.toastStore.show({ title: __("Bill resumed"), color: "info" });
+			this.uiStore.triggerItemSearchFocus();
+		},
+		async discardSavedCart() {
+			const snapshot = this.resumeCartSnapshot;
+			this.resume_cart_dialog = false;
+			this.resumeCartSnapshot = null;
+			clearCartSnapshot();
+			this.cartPersistReady = true;
+			if (snapshot?.draftName && this.pos_profile?.posa_allow_delete) {
+				// Only a bill that is still a draft; never touch a submitted one.
+				if ((await this.savedDraftStatus(snapshot.draftName)) === 0) {
+					try {
+						await frappe.call({
+							method: "posawesome.posawesome.api.invoices.delete_invoice",
+							args: { invoice: snapshot.draftName },
+						});
+					} catch (error) {
+						console.warn("Unable to delete the abandoned draft:", error);
+					}
+				}
+				this.refresh_parked_orders();
+			}
+			this.uiStore.triggerItemSearchFocus();
 		},
 		async restorePendingExchange() {
 			const profileName = this.pos_profile?.name;
@@ -1560,6 +1698,19 @@ export default {
 			() => this.scheduleExchangeDraftPersistence(),
 		);
 
+		this.$watch(
+			() => [
+				this.invoiceStore.metadata.changeVersion,
+				this.customer,
+				this.invoice_doc?.name,
+				this.invoiceType,
+			],
+			() => this.scheduleCartPersist(),
+		);
+		// A reload inside the debounce window must not lose the last scan.
+		this._cartPageHideHandler = () => this.flushCartPersist();
+		window.addEventListener("pagehide", this._cartPageHideHandler);
+
 		this._busHandlers = {
 			add_item: this.add_item,
 			clear_invoice: this.handleClearInvoice,
@@ -1629,6 +1780,14 @@ export default {
 		if (this.exchangeDraftPersistTimer) {
 			clearTimeout(this.exchangeDraftPersistTimer);
 			this.exchangeDraftPersistTimer = null;
+		}
+		if (this._cartPageHideHandler) {
+			window.removeEventListener("pagehide", this._cartPageHideHandler);
+			this._cartPageHideHandler = null;
+		}
+		if (this.cartPersistTimer) {
+			clearTimeout(this.cartPersistTimer);
+			this.cartPersistTimer = null;
 		}
 	},
 	created() {
