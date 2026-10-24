@@ -1106,7 +1106,8 @@ function statusDateRange(
 
 async function pruneInvoiceOutboxRows(cutoff: number, cutoffIso: string) {
 	let deleted = 0;
-	for (const status of ["acknowledged", "dead_letter"]) {
+	// mart #189: never dead_letter. That is a sale that was not saved.
+	for (const status of ["acknowledged"]) {
 		deleted += await pruneCollectionInChunks(
 			"invoice_outbox",
 			(table) =>

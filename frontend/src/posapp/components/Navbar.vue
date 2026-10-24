@@ -9,6 +9,7 @@
 			:pos-profile="posProfile"
 			:cashier-name="currentCashierDisplay"
 			:pending-invoices="pendingInvoices"
+			:failed-invoices="failedInvoices"
 			:loading-progress="loadingProgress"
 			:loading-active="loadingActive"
 			:loading-indeterminate="loadingIndeterminate"
@@ -128,6 +129,7 @@
 			v-model="showOfflineInvoices"
 			:pos-profile="posProfile"
 			:pending-count="pendingInvoices"
+			:failed-count="failedInvoices"
 			@deleted="updateAfterDelete"
 			@sync-all="syncPendingInvoices"
 		/>
@@ -253,6 +255,10 @@ export default {
 			default: () => ({}),
 		},
 		pendingInvoices: {
+			type: Number,
+			default: 0,
+		},
+		failedInvoices: {
 			type: Number,
 			default: 0,
 		},

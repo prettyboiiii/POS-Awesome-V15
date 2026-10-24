@@ -4,7 +4,10 @@ import { reduceCacheUsage } from "./cache";
 import { ensureOfflineInvoiceRequest } from "./idempotency";
 import {
 	enqueueInvoiceOutboxEntry,
+	getFailedInvoiceOutboxCount,
 	getInvoiceOutboxMode,
+	removeInvoiceOutboxEntry,
+	retryInvoiceOutboxEntry,
 	syncInvoiceOutboxResource,
 	shouldWriteInvoiceOutbox,
 } from "./invoiceOutbox";
@@ -14,10 +17,12 @@ import {
 	clearWriteQueueEntries,
 	deleteWriteQueueEntryByIndex,
 	enqueueWriteQueueEntry,
+	getDeadLetterPayloadCount,
 	getQueuedPayloadCount,
 	getQueuedPayloadSnapshots,
 	markWriteQueueEntryFailed,
 	markWriteQueueEntrySynced,
+	retryDeadLetterQueueEntry,
 	type OfflineEntityType,
 } from "./writeQueue";
 
@@ -240,7 +245,37 @@ export async function clearOfflineInvoices() {
 }
 
 export async function deleteOfflineInvoice(index: number) {
+	const target = getOfflineInvoices()[index];
 	await deleteWriteQueueEntryByIndex(INVOICE_ENTITY, index);
+	// The dual-written outbox copy would otherwise stay (or be sent) after a discard.
+	const clientRequestId = target?.invoice?.posa_client_request_id;
+	if (clientRequestId) {
+		await removeInvoiceOutboxEntry(clientRequestId);
+	}
+}
+
+// mart #189: sales the server refused 5 times. They stay in the count and the list.
+export async function getFailedOfflineInvoiceCount() {
+	const legacy = getDeadLetterPayloadCount(INVOICE_ENTITY);
+	if (getInvoiceOutboxMode() === "off") {
+		return legacy;
+	}
+	return Math.max(legacy, await getFailedInvoiceOutboxCount());
+}
+
+export async function retryOfflineInvoice(queueId: number) {
+	const target = getOfflineInvoices().find(
+		(entry) => Number(entry.queue_id) === Number(queueId),
+	);
+	const retried = await retryDeadLetterQueueEntry(
+		INVOICE_ENTITY,
+		Number(queueId),
+	);
+	// In dual_write the outbox copy can be the one that gave up while the queue row has not.
+	const outboxRetried = target?.invoice?.posa_client_request_id
+		? await retryInvoiceOutboxEntry(target.invoice.posa_client_request_id)
+		: false;
+	return retried || outboxRetried;
 }
 
 export function getPendingOfflineInvoiceCount() {

@@ -18,6 +18,7 @@
  */
 import { defineStore } from "pinia";
 import {
+	getFailedOfflineInvoiceCount,
 	getInvoiceOutboxMode,
 	getPendingInvoiceOutboxCount,
 	getPendingOfflineInvoiceCount,
@@ -30,6 +31,8 @@ import { useToastStore } from "./toastStore.js";
 export const useSyncStore = defineStore("sync", {
 	state: () => ({
 		pendingInvoicesCount: 0,
+		// mart #189: sales the server refused 5 times. Also inside pendingInvoicesCount.
+		failedInvoicesCount: 0,
 	}),
 	actions: {
 		async updatePendingCount() {
@@ -40,6 +43,7 @@ export const useSyncStore = defineStore("sync", {
 						? legacyCount
 						: await getPendingInvoiceOutboxCount();
 				this.pendingInvoicesCount = outboxCount;
+				this.failedInvoicesCount = await getFailedOfflineInvoiceCount();
 			} catch (error) {
 				console.error("Failed to update pending invoices count", error);
 			}
@@ -92,7 +96,15 @@ export const useSyncStore = defineStore("sync", {
 			} catch (error) {
 				console.error("Sync failed", error);
 			} finally {
-				this.updatePendingCount();
+				await this.updatePendingCount();
+				if (this.failedInvoicesCount > 0) {
+					const t = (window as any).__ || ((text: string) => text);
+					toastStore.show({
+						title: `${t("Sale not sent")}: ${this.failedInvoicesCount}. ${t("Do not discard it. Open the offline invoices list.")}`,
+						color: "error",
+						timeout: 15000,
+					});
+				}
 			}
 		},
 	},

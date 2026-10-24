@@ -21,7 +21,18 @@
 								</p>
 								<div class="header-stats-revamped">
 									<v-chip
-										v-if="invoices.length > 0"
+										v-if="failedInvoices.length > 0"
+										color="error"
+										variant="elevated"
+										size="default"
+										class="status-chip-revamped failed-chip"
+										elevation="2"
+									>
+										<v-icon start size="16">mdi-alert-circle</v-icon>
+										{{ failedInvoices.length }} {{ __("Not sent") }}
+									</v-chip>
+									<v-chip
+										v-if="pendingOnly > 0"
 										color="warning"
 										variant="elevated"
 										size="default"
@@ -29,10 +40,10 @@
 										elevation="2"
 									>
 										<v-icon start size="16">mdi-clock-outline</v-icon>
-										{{ invoices.length }} {{ __("Pending Sync") }}
+										{{ pendingOnly }} {{ __("Pending Sync") }}
 									</v-chip>
 									<v-chip
-										v-else
+										v-else-if="!failedInvoices.length"
 										color="success"
 										variant="elevated"
 										size="default"
@@ -91,6 +102,17 @@
 								</p>
 							</div>
 
+							<v-alert
+								v-if="failedInvoices.length"
+								type="error"
+								variant="tonal"
+								class="mb-4 failed-invoices-alert"
+								data-test="failed-invoices-alert"
+							>
+								{{ __("Sale not sent") }}: {{ failedInvoices.length }}.
+								{{ __("Do not discard it. Open the offline invoices list.") }}
+							</v-alert>
+
 							<v-data-table
 								:headers="headers"
 								:items="invoices"
@@ -133,14 +155,41 @@
 									</div>
 								</template>
 
-								<template #item.actions="{ index }">
+								<template #item.status="{ item }">
+									<div v-if="item.status === 'dead_letter'" class="failed-status-cell">
+										<v-chip size="small" color="error" variant="elevated">
+											<v-icon start size="14">mdi-alert-circle</v-icon>
+											{{ __("Not sent") }}
+										</v-chip>
+										<div v-if="item.last_error" class="text-caption text-error failed-error-text">
+											{{ item.last_error }}
+										</div>
+									</div>
+									<v-chip v-else size="small" color="warning" variant="tonal">
+										{{ __("Pending Sync") }}
+									</v-chip>
+								</template>
+
+								<template #item.actions="{ item }">
 									<v-btn
-										v-if="posProfile.posa_allow_delete_offline_invoice"
+										v-if="item.status === 'dead_letter'"
+										color="primary"
+										size="small"
+										variant="elevated"
+										class="mr-2 retry-btn"
+										prepend-icon="mdi-reload"
+										data-test="retry-offline-invoice"
+										@click="retryInvoice(item)"
+									>
+										{{ __("Retry") }}
+									</v-btn>
+									<v-btn
+										v-if="item.status === 'dead_letter' || posProfile.posa_allow_delete_offline_invoice"
 										icon
 										color="error"
 										size="small"
 										variant="text"
-										@click="removeInvoice(index)"
+										@click="askDiscard(item)"
 										class="delete-btn"
 										:aria-label="__('Delete offline invoice')"
 									>
@@ -192,13 +241,40 @@
 				</v-card-actions>
 			</v-card>
 		</v-dialog>
+
+		<v-dialog v-model="confirmDiscard" max-width="460px">
+			<v-card>
+				<v-card-title>{{ __("Discard this sale?") }}</v-card-title>
+				<v-card-text>
+					{{
+						__(
+							"This sale was not saved on the server. If you discard it, the money taken has no invoice. Only discard it after you have written it down or rung it again.",
+						)
+					}}
+				</v-card-text>
+				<v-card-actions>
+					<v-spacer></v-spacer>
+					<v-btn variant="text" data-test="discard-cancel" @click="confirmDiscard = false">
+						{{ __("Cancel") }}
+					</v-btn>
+					<v-btn color="error" variant="elevated" data-test="discard-confirm" @click="confirmRemove">
+						{{ __("Discard") }}
+					</v-btn>
+				</v-card-actions>
+			</v-card>
+		</v-dialog>
 	</v-row>
 </template>
 
 <script setup>
-import { ref, watch } from "vue";
+import { computed, ref, watch } from "vue";
 import { formatUtils } from "../format";
-import { getOfflineInvoices, deleteOfflineInvoice, getPendingOfflineInvoiceCount } from "../../offline/index";
+import {
+	getOfflineInvoices,
+	deleteOfflineInvoice,
+	getPendingOfflineInvoiceCount,
+	retryOfflineInvoice,
+} from "../../offline/index";
 
 defineOptions({
 	name: "OfflineInvoicesDialog",
@@ -214,6 +290,10 @@ const props = defineProps({
 		type: Number,
 		default: 0,
 	},
+	failedCount: {
+		type: Number,
+		default: 0,
+	},
 });
 
 const emit = defineEmits(["update:modelValue", "deleted", "sync-all"]);
@@ -223,6 +303,11 @@ const currency_precision = ref(2);
 
 const dialog = ref(props.modelValue);
 const invoices = ref([]);
+// mart #189: sales the server refused 5 times (status dead_letter). Never hidden.
+const failedInvoices = computed(() => invoices.value.filter((entry) => entry.status === "dead_letter"));
+const pendingOnly = computed(() => invoices.value.length - failedInvoices.value.length);
+const confirmDiscard = ref(false);
+const discardTarget = ref(null);
 const headers = [
 	{
 		title: __("Customer"),
@@ -241,6 +326,13 @@ const headers = [
 		value: "grand_total",
 		align: "end",
 		width: "25%",
+	},
+	{
+		title: __("Status"),
+		value: "status",
+		align: "start",
+		width: "20%",
+		sortable: false,
 	},
 	{
 		title: __("Actions"),
@@ -266,7 +358,7 @@ watch(dialog, (val) => {
 });
 
 watch(
-	() => props.pendingCount,
+	() => [props.pendingCount, props.failedCount],
 	() => {
 		if (dialog.value) {
 			loadInvoices();
@@ -304,13 +396,41 @@ function loadInvoices() {
 	invoices.value = getOfflineInvoices();
 }
 
-async function removeInvoice(index) {
-	if (!props.posProfile.posa_allow_delete_offline_invoice) {
+function canDiscard(item) {
+	return item.status === "dead_letter" || !!props.posProfile.posa_allow_delete_offline_invoice;
+}
+
+function askDiscard(item) {
+	if (!canDiscard(item)) {
+		return;
+	}
+	discardTarget.value = item;
+	confirmDiscard.value = true;
+}
+
+async function confirmRemove() {
+	const target = discardTarget.value;
+	confirmDiscard.value = false;
+	discardTarget.value = null;
+	if (!target || !canDiscard(target)) {
+		return;
+	}
+	// Find the row by queue_id: the table index shifts with paging and sorting.
+	const index = getOfflineInvoices().findIndex((entry) => entry.queue_id === target.queue_id);
+	if (index < 0) {
+		loadInvoices();
 		return;
 	}
 	await deleteOfflineInvoice(index);
 	loadInvoices();
 	emit("deleted", getPendingOfflineInvoiceCount());
+}
+
+async function retryInvoice(item) {
+	await retryOfflineInvoice(Number(item.queue_id));
+	loadInvoices();
+	emit("deleted", getPendingOfflineInvoiceCount());
+	emit("sync-all");
 }
 </script>
 
@@ -623,6 +743,12 @@ async function removeInvoice(index) {
 .date-chip {
 	border-radius: var(--border-radius-sm);
 	font-weight: 500;
+}
+
+.failed-error-text {
+	max-width: 240px;
+	white-space: normal;
+	word-break: break-word;
 }
 
 .delete-btn {

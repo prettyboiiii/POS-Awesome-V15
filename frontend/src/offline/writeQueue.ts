@@ -440,6 +440,46 @@ export async function clearWriteQueueEntries(
 	await refreshQueueMemory(entityType);
 }
 
+// mart #189: a dead_letter sale is a sale the server never accepted. It is kept
+// (never pruned, never auto-retried) until a person calls this or deletes it.
+export async function retryDeadLetterQueueEntry(
+	entityType: OfflineEntityType,
+	queueId: number,
+) {
+	await ensureOfflineQueueReady();
+	const table = db.table(WRITE_QUEUE_TABLE);
+	const updated = await db.transaction("rw", table, async () => {
+		const current = (await table.get(queueId)) as
+			| OfflineQueueEntry
+			| undefined;
+		if (
+			!current ||
+			current.entity_type !== entityType ||
+			current.status !== "dead_letter"
+		) {
+			return false;
+		}
+		await table.put({
+			...current,
+			status: "pending",
+			retry_count: 0,
+			next_attempt_at: null,
+		});
+		return true;
+	});
+	if (updated) {
+		await refreshQueueMemory(entityType);
+	}
+	return updated;
+}
+
+export function getDeadLetterPayloadCount(entityType: OfflineEntityType) {
+	const snapshots = memory[getMemoryKey(entityType)];
+	return Array.isArray(snapshots)
+		? snapshots.filter((entry) => entry?.status === "dead_letter").length
+		: 0;
+}
+
 export async function claimRetryableQueueEntries(
 	entityType: OfflineEntityType,
 ) {

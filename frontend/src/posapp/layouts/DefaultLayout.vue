@@ -7,6 +7,7 @@
 			<Navbar
 				:pos-profile="posProfile"
 				:pending-invoices="pendingInvoicesCount"
+				:failed-invoices="failedInvoicesCount"
 				:last-invoice-id="lastInvoiceId"
 				:network-online="networkOnline"
 				:server-online="serverOnline"
@@ -232,7 +233,7 @@ const pricingRulesStore = usePricingRulesStore();
 // UI Store State
 const { posProfile, lastInvoiceId, posOpeningShift } = storeToRefs(uiStore);
 
-const { pendingInvoicesCount } = storeToRefs(syncStore);
+const { pendingInvoicesCount, failedInvoicesCount } = storeToRefs(syncStore);
 const { loadProgress, customersLoaded, selectedCustomer } = storeToRefs(customersStore);
 const {
 	itemsLoaded,

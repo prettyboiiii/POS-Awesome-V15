@@ -72,17 +72,22 @@
 						:class="[
 							'offline-invoices-btn mobile-btn pos-themed-button',
 							isRtl ? 'rtl-offline-btn' : 'ltr-offline-btn',
-							{ 'has-pending': pendingInvoices > 0 },
+							{ 'has-pending': pendingInvoices > 0, 'has-failed': failedInvoices > 0 },
 						]"
 						:aria-label="__('View offline invoices') + ` (${pendingInvoices})`"
 						@click="$emit('show-offline-invoices')"
 					>
 						<v-badge v-if="pendingInvoices > 0" :content="pendingInvoices" color="error" floating>
-							<v-icon class="pos-text-primary">mdi-file-document-multiple-outline</v-icon>
+							<v-icon :class="failedInvoices > 0 ? 'text-error' : 'pos-text-primary'">{{
+								failedInvoices > 0 ? "mdi-alert-circle" : "mdi-file-document-multiple-outline"
+							}}</v-icon>
 						</v-badge>
 						<v-icon v-else class="pos-text-primary">mdi-file-document-multiple-outline</v-icon>
 						<v-tooltip activator="parent" location="bottom">
 							{{ __("Offline Invoices") }} ({{ pendingInvoices }})
+							<template v-if="failedInvoices > 0">
+								- {{ __("Sale not sent") }}: {{ failedInvoices }}
+							</template>
 						</v-tooltip>
 					</v-btn>
 
@@ -172,7 +177,7 @@
 						:class="[
 							'offline-invoices-btn pos-themed-button',
 							isRtl ? 'rtl-offline-btn' : 'ltr-offline-btn',
-							{ 'has-pending': pendingInvoices > 0 },
+							{ 'has-pending': pendingInvoices > 0, 'has-failed': failedInvoices > 0 },
 						]"
 						:aria-label="__('View offline invoices') + ` (${pendingInvoices})`"
 						:aria-describedby="'offline-invoices-tooltip'"
@@ -181,7 +186,9 @@
 						tabindex="0"
 					>
 						<v-badge v-if="pendingInvoices > 0" :content="pendingInvoices" color="error" floating>
-							<v-icon class="pos-text-primary">mdi-file-document-multiple-outline</v-icon>
+							<v-icon :class="failedInvoices > 0 ? 'text-error' : 'pos-text-primary'">{{
+								failedInvoices > 0 ? "mdi-alert-circle" : "mdi-file-document-multiple-outline"
+							}}</v-icon>
 						</v-badge>
 						<v-icon v-else class="pos-text-primary">mdi-file-document-multiple-outline</v-icon>
 						<v-tooltip
@@ -192,6 +199,9 @@
 							:close-delay="200"
 						>
 							{{ __("Offline Invoices") }} ({{ pendingInvoices }})
+							<template v-if="failedInvoices > 0">
+								- {{ __("Sale not sent") }}: {{ failedInvoices }}
+							</template>
 						</v-tooltip>
 					</v-btn>
 
@@ -288,6 +298,10 @@ export default {
 			default: () => ({}),
 		},
 		pendingInvoices: {
+			type: Number,
+			default: 0,
+		},
+		failedInvoices: {
 			type: Number,
 			default: 0,
 		},
@@ -946,6 +960,10 @@ export default {
 
 .offline-invoices-btn.has-pending {
 	animation: pulse 2s infinite;
+}
+
+.offline-invoices-btn.has-failed {
+	outline: 2px solid #d32f2f;
 }
 
 @keyframes pulse {

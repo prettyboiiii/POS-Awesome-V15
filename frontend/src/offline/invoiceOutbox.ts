@@ -40,7 +40,11 @@ const JOURNAL_PREFIX = "posa_invoice_intent_";
 const MAX_RETRY_COUNT = 5;
 const INITIAL_BACKOFF_MS = 5_000;
 const MAX_BACKOFF_MS = 5 * 60 * 1_000;
-const TERMINAL_STATUSES = new Set<InvoiceOutboxStatus>([
+// mart #189: only a sale the server accepted is finished. dead_letter is a sale
+// that was never saved, so it stays counted and listed until a person retries or
+// discards it. It is not retried automatically (see NO_AUTO_RETRY_STATUSES).
+const TERMINAL_STATUSES = new Set<InvoiceOutboxStatus>(["acknowledged"]);
+const NO_AUTO_RETRY_STATUSES = new Set<InvoiceOutboxStatus>([
 	"acknowledged",
 	"dead_letter",
 ]);
@@ -205,6 +209,36 @@ export async function getPendingInvoiceOutboxCount() {
 	return (await getInvoiceOutboxRows()).length;
 }
 
+export async function getFailedInvoiceOutboxCount() {
+	return (await getInvoiceOutboxRows()).filter(
+		(row) => row.status === "dead_letter",
+	).length;
+}
+
+// A person pressed Retry on a sale that was given up on: send it again from scratch.
+export async function retryInvoiceOutboxEntry(clientRequestId: string) {
+	const normalizedId = String(clientRequestId || "").trim();
+	if (!normalizedId) return false;
+	await ensureOutboxReady();
+	const table = db.table(TABLE);
+	return db.transaction("rw", table, async () => {
+		const row = (await table
+			.where("client_request_id")
+			.equals(normalizedId)
+			.first()) as InvoiceOutboxEntry | undefined;
+		if (!row || row.status !== "dead_letter") return false;
+		await table.put({
+			...row,
+			status: "pending",
+			retry_count: 0,
+			next_retry_at: null,
+			nextAttemptAt: null,
+			updated_at: nowIso(),
+		});
+		return true;
+	});
+}
+
 export async function removeInvoiceOutboxEntry(clientRequestId: string) {
 	const normalizedId = String(clientRequestId || "").trim();
 	if (!normalizedId) return 0;
@@ -219,7 +253,7 @@ export async function removeInvoiceOutboxEntry(clientRequestId: string) {
 }
 
 function shouldAttempt(row: InvoiceOutboxEntry) {
-	if (TERMINAL_STATUSES.has(row.status)) return false;
+	if (NO_AUTO_RETRY_STATUSES.has(row.status)) return false;
 	if (!row.next_retry_at) return true;
 	const nextRetryAt = Date.parse(row.next_retry_at);
 	return !Number.isFinite(nextRetryAt) || nextRetryAt <= Date.now();
